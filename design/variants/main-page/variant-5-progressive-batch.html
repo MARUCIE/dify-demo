@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>路桥报销审核智能体 v2.0 - Variant 5: Progressive Batch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-base: #020617;
+    --bg-card: rgba(15, 23, 42, 0.6);
+    --bg-card-bright: rgba(30, 41, 59, 0.5);
+    --border-subtle: rgba(59, 130, 246, 0.1);
+    --border-bright: rgba(59, 130, 246, 0.15);
+    --blue-400: #60a5fa;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --purple-500: #8b5cf6;
+    --purple-600: #7c3aed;
+    --green-400: #4ade80;
+    --green-500: #22c55e;
+    --green-600: #16a34a;
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --red-400: #f87171;
+    --red-500: #ef4444;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg-base);
+    color: var(--slate-200);
+  }
+
+  /* ===== APP SHELL: 100vh layout ===== */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===== ANIMATED BACKGROUND ===== */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPulse 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes gridPulse {
+    0%,100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  .bg-radial-top {
+    position: fixed; top: -30%; left: 50%; transform: translateX(-50%);
+    width: 140%; height: 80%;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%);
+    z-index: 0; pointer-events: none;
+  }
+  .bg-radial-bottom {
+    position: fixed; bottom: -20%; left: 50%; transform: translateX(-50%);
+    width: 100%; height: 60%;
+    background: radial-gradient(ellipse, rgba(139,92,246,0.05) 0%, transparent 70%);
+    z-index: 0; pointer-events: none;
+  }
+
+  /* ===== FLOATING PARTICLES ===== */
+  .particle {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    background: radial-gradient(circle, rgba(59,130,246,0.6), transparent);
+    animation: float linear infinite;
+  }
+  @keyframes float {
+    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  }
+
+  /* ===== HEADER (56px fixed) ===== */
+  .app-header {
+    height: 56px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    background: rgba(2, 6, 23, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    position: relative;
+    z-index: 10;
+  }
+
+  .logo-glow {
+    animation: logoGlow 3s ease-in-out infinite;
+  }
+  @keyframes logoGlow {
+    0%,100% { filter: drop-shadow(0 0 8px rgba(59,130,246,0.3)); }
+    50% { filter: drop-shadow(0 0 16px rgba(59,130,246,0.6)); }
+  }
+
+  .text-glow-blue { text-shadow: 0 0 20px rgba(59,130,246,0.5), 0 0 40px rgba(59,130,246,0.2); }
+
+  /* ===== STATUS BADGE ===== */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-blue { background: rgba(59,130,246,0.1); color: var(--blue-400); border: 1px solid rgba(59,130,246,0.2); }
+  .badge-green { background: rgba(34,197,94,0.1); color: var(--green-400); border: 1px solid rgba(34,197,94,0.2); }
+  .badge-amber { background: rgba(245,158,11,0.1); color: var(--amber-400); border: 1px solid rgba(245,158,11,0.2); }
+  .badge-red { background: rgba(239,68,68,0.1); color: var(--red-400); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* ===== PHASE PANEL (flex: 1, fills remaining) ===== */
+  .phase-panel {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    padding: 0 32px;
+  }
+
+  /* ===== BOTTOM STATS BAR (48px fixed) ===== */
+  .app-footer {
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 0 32px;
+    background: rgba(2, 6, 23, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(59, 130, 246, 0.08);
+    position: relative;
+    z-index: 10;
+  }
+  .footer-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+  .footer-stat .value {
+    color: var(--slate-300);
+    font-weight: 600;
+  }
+
+  /* ===== GLASSMORPHISM ===== */
+  .glass {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle);
+  }
+  .glass-bright {
+    background: var(--bg-card-bright);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border-bright);
+  }
+
+  /* ===== GLOW EFFECTS ===== */
+  .glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15), 0 0 60px rgba(59,130,246,0.05); }
+  .glow-blue-strong { box-shadow: 0 0 30px rgba(59,130,246,0.3), 0 0 80px rgba(59,130,246,0.1), inset 0 0 30px rgba(59,130,246,0.05); }
+
+  /* ===== PHASE CONTAINERS ===== */
+  .phase {
+    position: absolute;
+    inset: 0;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .phase.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+  }
+  .phase.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+
+  /* ===== PHASE 1: UPLOAD ===== */
+
+  /* --- Initial drop zone (full area) --- */
+  .upload-full {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dropzone-massive {
+    flex: 1;
+    border: 2px dashed rgba(59,130,246,0.25);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  .dropzone-massive:hover {
+    border-color: rgba(59,130,246,0.5);
+    background: rgba(59,130,246,0.03);
+  }
+  .dropzone-massive .scan-line {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--blue-500) 50%, transparent 100%);
+    animation: scanMove 3s ease-in-out infinite;
+    opacity: 0.4;
+  }
+  @keyframes scanMove {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.4; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .upload-icon-float {
+    animation: floatUpDown 3s ease-in-out infinite;
+  }
+  @keyframes floatUpDown {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* --- Shrunk state (files added) --- */
+  .upload-shrunk .dropzone-massive {
+    flex: 0;
+    height: 0;
+    min-height: 0;
+    border-width: 0;
+    padding: 0;
+    opacity: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .file-batch-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s ease 0.2s;
+    overflow: hidden;
+  }
+  .upload-shrunk .file-batch-area {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ===== FILE TABLE ===== */
+  .file-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+  }
+  .file-table thead th {
+    padding: 10px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--slate-500);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    position: sticky;
+    top: 0;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 2;
+  }
+  .file-table tbody tr {
+    transition: background 0.2s;
+  }
+  .file-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.04);
+  }
+  .file-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.1);
+    vertical-align: middle;
+  }
+  .file-row {
+    animation: rowSlideIn 0.4s ease forwards;
+    opacity: 0;
+  }
+  @keyframes rowSlideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Handwriting bar */
+  .hw-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hw-bar-track {
+    width: 60px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(51, 65, 85, 0.4);
+    overflow: hidden;
+    position: relative;
+  }
+  .hw-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+  .hw-bar-fill.high { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .hw-bar-fill.low { background: linear-gradient(90deg, var(--blue-500), var(--blue-400)); }
+
+  /* ===== CTA BUTTON ===== */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-700));
+    color: white; font-weight: 700; padding: 14px 36px;
+    border: none; border-radius: 12px; cursor: pointer;
+    font-size: 15px; letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: inherit;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(37,99,235,0.4), 0 0 60px rgba(37,99,235,0.15);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-primary::after {
+    content: '';
+    position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: linear-gradient(transparent, rgba(255,255,255,0.1), transparent);
+    transform: rotate(45deg); transition: all 0.5s ease;
+    opacity: 0;
+  }
+  .btn-primary:hover::after { opacity: 1; animation: btnShine 1.5s ease; }
+  @keyframes btnShine {
+    0% { transform: rotate(45deg) translateX(-100%); }
+    100% { transform: rotate(45deg) translateX(100%); }
+  }
+
+  /* ===== COLLAPSED BAR (for phase transitions) ===== */
+  .collapsed-bar {
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* ===== PHASE 2: PROCESSING ===== */
+
+  .processing-layout {
+    flex: 1;
+    display: flex;
+    gap: 20px;
+    overflow: hidden;
+  }
+
+  /* Left: workflow timeline */
+  .workflow-panel {
+    flex: 0 0 58%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .workflow-panel-inner {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .workflow-panel-inner::-webkit-scrollbar {
+    width: 4px;
+  }
+  .workflow-panel-inner::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .workflow-panel-inner::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 2px;
+  }
+
+  /* Timeline step */
+  .timeline-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 8px 0;
+    position: relative;
+  }
+  .timeline-dot-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 36px;
+  }
+  .timeline-dot {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s ease;
+    flex-shrink: 0;
+  }
+  .timeline-dot.idle {
+    background: rgba(51,65,85,0.5);
+    color: var(--slate-500);
+  }
+  .timeline-dot.active {
+    background: linear-gradient(135deg, var(--blue-600), var(--purple-600));
+    color: white;
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+  .timeline-dot.completed {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+    box-shadow: 0 0 12px rgba(34,197,94,0.3);
+  }
+  .timeline-dot.error {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: white;
+  }
+  @keyframes dotPulse {
+    0%,100% { box-shadow: 0 0 20px rgba(59,130,246,0.4); }
+    50% { box-shadow: 0 0 32px rgba(59,130,246,0.6), 0 0 60px rgba(59,130,246,0.2); }
+  }
+
+  .timeline-connector {
+    width: 2px;
+    flex: 1;
+    min-height: 16px;
+    margin: 4px 0;
+    background: rgba(71, 85, 105, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .timeline-connector.completed {
+    background: rgba(34,197,94,0.3);
+  }
+  .timeline-connector.active::after {
+    content: '';
+    position: absolute;
+    left: -1px; top: 0;
+    width: 4px;
+    height: 30%;
+    background: linear-gradient(180deg, transparent, var(--blue-500), var(--purple-500), transparent);
+    border-radius: 2px;
+    animation: connectorFlow 1.2s linear infinite;
+    box-shadow: 0 0 10px rgba(59,130,246,0.6);
+  }
+  @keyframes connectorFlow {
+    0% { top: -30%; }
+    100% { top: 100%; }
+  }
+
+  .timeline-content {
+    flex: 1;
+    padding-top: 6px;
+    min-width: 0;
+  }
+  .timeline-content .step-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-200);
+  }
+  .timeline-content .step-name.idle {
+    color: var(--slate-500);
+  }
+  .timeline-content .step-status {
+    font-size: 11px;
+    margin-top: 3px;
+  }
+
+  /* Progress bar for active step */
+  .step-progress-bar {
+    height: 3px;
+    background: rgba(51,65,85,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .step-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--blue-600), var(--purple-500), var(--blue-600));
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+    transition: width 0.3s ease;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Typing cursor */
+  .typing-cursor::after {
+    content: '|'; animation: blink 1s step-end infinite; color: var(--blue-500);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Right: batch dashboard */
+  .batch-panel {
+    flex: 0 0 42%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  .batch-progress-circle {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+  }
+  .batch-progress-circle svg {
+    transform: rotate(-90deg);
+  }
+  .batch-progress-circle .circle-bg {
+    fill: none;
+    stroke: rgba(51, 65, 85, 0.3);
+    stroke-width: 6;
+  }
+  .batch-progress-circle .circle-fill {
+    fill: none;
+    stroke: var(--blue-500);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+    filter: drop-shadow(0 0 8px rgba(59,130,246,0.4));
+  }
+  .batch-progress-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .file-mini-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+  }
+  .file-mini-card.current {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 20px rgba(59,130,246,0.1);
+  }
+  .file-mini-card.waiting {
+    opacity: 0.5;
+  }
+  .file-mini-card.done-pass {
+    border-color: rgba(34,197,94,0.15);
+    background: rgba(34,197,94,0.04);
+  }
+  .file-mini-card.done-review {
+    border-color: rgba(245,158,11,0.15);
+    background: rgba(245,158,11,0.04);
+  }
+  .file-mini-card.done-fail {
+    border-color: rgba(239,68,68,0.15);
+    background: rgba(239,68,68,0.04);
+  }
+
+  /* ===== PHASE 3: RESULTS ===== */
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .summary-card {
+    padding: 16px;
+    border-radius: 14px;
+    text-align: center;
+    animation: cardScaleIn 0.4s ease forwards;
+    opacity: 0;
+  }
+  @keyframes cardScaleIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .results-table-wrap {
+    flex: 1;
+    overflow-y: auto;
+    border-radius: 14px;
+  }
+  .results-table-wrap::-webkit-scrollbar {
+    width: 4px;
+  }
+  .results-table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .results-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 2px;
+  }
+
+  .results-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+  }
+  .results-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--slate-500);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+    position: sticky;
+    top: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 2;
+  }
+  .results-table tbody tr {
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .results-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.04);
+  }
+  .results-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.1);
+    vertical-align: middle;
+  }
+
+  .result-row {
+    animation: rowReveal 0.4s ease forwards;
+    opacity: 0;
+  }
+  @keyframes rowReveal {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Expandable detail */
+  .result-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .result-detail.expanded {
+    max-height: 300px;
+  }
+  .result-detail-inner {
+    padding: 12px 16px 16px 60px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.1);
+  }
+
+  .issue-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 12px;
+  }
+  .issue-item + .issue-item {
+    border-top: 1px solid rgba(71, 85, 105, 0.08);
+  }
+
+  /* ===== STAT NUMBERS ===== */
+  .stat-number {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* ===== UTILITY ===== */
+  .pulse-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulseDot 2s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%,100% { box-shadow: 0 0 4px currentColor; opacity: 1; }
+    50% { box-shadow: 0 0 12px currentColor; opacity: 0.7; }
+  }
+
+  /* Success shimmer for completed results */
+  .success-shimmer {
+    position: relative; overflow: hidden;
+  }
+  .success-shimmer::after {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(34,197,94,0.06), transparent);
+    animation: successShimmer 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes successShimmer {
+    0% { left: -100%; }
+    50%,100% { left: 100%; }
+  }
+
+  /* Smooth counter animation */
+  .counter-animate {
+    display: inline-block;
+    transition: all 0.3s ease;
+  }
+
+  /* Drop zone context text */
+  .context-text {
+    font-size: 12px;
+    color: var(--slate-600);
+    letter-spacing: 1px;
+    margin-top: 16px;
+  }
+
+  /* Small scrollable area inside batch panel */
+  .batch-files-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .batch-files-list::-webkit-scrollbar { width: 3px; }
+  .batch-files-list::-webkit-scrollbar-track { background: transparent; }
+  .batch-files-list::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.15); border-radius: 2px; }
+
+  /* Add chevron indicator for expandable rows */
+  .chevron {
+    transition: transform 0.3s ease;
+    color: var(--slate-500);
+  }
+  .chevron.open {
+    transform: rotate(90deg);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="bg-grid"></div>
+<div class="bg-radial-top"></div>
+<div class="bg-radial-bottom"></div>
+
+<!-- Floating particles -->
+<div class="particle" style="width:3px;height:3px;left:8%;animation-duration:12s;animation-delay:0s"></div>
+<div class="particle" style="width:2px;height:2px;left:22%;animation-duration:15s;animation-delay:2s"></div>
+<div class="particle" style="width:4px;height:4px;left:38%;animation-duration:10s;animation-delay:4s"></div>
+<div class="particle" style="width:2px;height:2px;left:52%;animation-duration:14s;animation-delay:1s"></div>
+<div class="particle" style="width:3px;height:3px;left:68%;animation-duration:11s;animation-delay:3s"></div>
+<div class="particle" style="width:2px;height:2px;left:82%;animation-duration:13s;animation-delay:5s"></div>
+<div class="particle" style="width:3px;height:3px;left:93%;animation-duration:16s;animation-delay:7s"></div>
+<div class="particle" style="width:2px;height:2px;left:4%;animation-duration:18s;animation-delay:6s"></div>
+
+<!-- ===== APP SHELL ===== -->
+<div id="app">
+
+  <!-- ===== HEADER BAR (56px) ===== -->
+  <header class="app-header">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="logo-glow" style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 12l2 2 4-4"/>
+          <path d="M12 2a10 10 0 1 0 10 10"/>
+        </svg>
+      </div>
+      <div>
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span class="text-glow-blue" style="font-size:17px;font-weight:700;letter-spacing:-0.3px;">路桥报销审核智能体</span>
+          <span style="font-size:11px;color:var(--slate-600);">v2.0</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="badge badge-blue">
+        <span class="pulse-dot" style="background:var(--blue-500);color:var(--blue-500);"></span>
+        AI 引擎就绪
+      </span>
+    </div>
+  </header>
+
+  <!-- ===== PHASE PANEL ===== -->
+  <div class="phase-panel" id="phasePanel">
+
+    <!-- =============== PHASE 1: UPLOAD =============== -->
+    <div class="phase visible" id="phase1">
+      <div class="upload-full" id="uploadArea">
+
+        <!-- Drop zone (full area initially) -->
+        <div class="dropzone-massive glass" id="dropzone" style="border-radius:16px;margin-bottom:16px;">
+          <div class="scan-line"></div>
+          <div class="upload-icon-float" style="margin-bottom:20px;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--blue-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p style="font-size:20px;font-weight:700;color:var(--slate-200);letter-spacing:0.5px;">拖拽文件或文件夹至此</p>
+          <p style="font-size:13px;color:var(--slate-500);margin-top:8px;">支持单个 PDF 或整个报销文件夹批量上传</p>
+          <p class="context-text" style="margin-top:20px;">路桥集团三分公司 &middot; 宜宾挂弓山项目</p>
+        </div>
+
+        <!-- File batch area (hidden initially, shown on "add files") -->
+        <div class="file-batch-area" id="fileBatchArea">
+          <!-- Top mini dropzone -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue-400)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="font-size:14px;font-weight:600;">批量文件列表</span>
+            </div>
+            <span style="font-size:12px;color:var(--slate-500);">点击表头可排序</span>
+          </div>
+
+          <!-- File table container -->
+          <div class="glass" style="border-radius:14px;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+            <div style="flex:1;overflow-y:auto;">
+              <table class="file-table" id="fileTable">
+                <thead>
+                  <tr>
+                    <th style="width:36px;text-align:center;">#</th>
+                    <th>文件名</th>
+                    <th style="width:60px;text-align:center;">页数</th>
+                    <th style="width:80px;text-align:right;">大小</th>
+                    <th style="width:140px;">手写比例</th>
+                    <th style="width:80px;text-align:center;">状态</th>
+                  </tr>
+                </thead>
+                <tbody id="fileTableBody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Bottom action bar -->
+            <div style="padding:14px 20px;border-top:1px solid rgba(59,130,246,0.08);display:flex;align-items:center;justify-content:space-between;background:rgba(15,23,42,0.4);">
+              <span style="font-size:12px;color:var(--slate-500);" id="fileSummaryText">
+                共 5 个文件 &middot; 29.26MB &middot; 预计 75 秒
+              </span>
+              <button class="btn-primary" id="startAuditBtn" onclick="startBatchAudit()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                启动批量审核 (5)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============== PHASE 2: PROCESSING =============== -->
+    <div class="phase hidden" id="phase2">
+      <!-- Collapsed upload bar -->
+      <div class="collapsed-bar glass" style="border-color:rgba(59,130,246,0.1);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue-400)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="color:var(--slate-300);">5 个文件</span>
+          <span style="color:var(--slate-600);">&middot;</span>
+          <span style="color:var(--blue-400);" id="processingStatusText">审核中 1/5</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:12px;color:var(--slate-500);" id="processingEtaText">预计剩余 75 秒</span>
+        </div>
+      </div>
+
+      <!-- Main processing split -->
+      <div class="processing-layout">
+        <!-- LEFT: Workflow timeline -->
+        <div class="workflow-panel glass" style="border-radius:14px;padding:16px;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple-500)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-9-11h2m18 0h2"/></svg>
+              <span style="font-size:13px;font-weight:600;">审核流程</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--slate-500);">步骤</span>
+              <span class="text-glow-blue stat-number" style="font-size:18px;font-weight:800;color:var(--blue-400);" id="currentStepNum">1</span>
+              <span style="font-size:12px;color:var(--slate-600);">/10</span>
+            </div>
+          </div>
+          <div class="workflow-panel-inner" id="workflowTimeline">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- RIGHT: Batch progress -->
+        <div class="batch-panel">
+          <!-- Circular progress -->
+          <div class="glass" style="border-radius:14px;padding:20px;text-align:center;">
+            <div class="batch-progress-circle">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle class="circle-bg" cx="50" cy="50" r="42"/>
+                <circle class="circle-fill" cx="50" cy="50" r="42"
+                  stroke-dasharray="263.89"
+                  stroke-dashoffset="263.89"
+                  id="progressCircle"/>
+              </svg>
+              <div class="batch-progress-text">
+                <span class="stat-number" style="font-size:28px;font-weight:800;color:var(--blue-400);" id="progressPercent">0%</span>
+                <span style="font-size:10px;color:var(--slate-500);">完成</span>
+              </div>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:var(--slate-500);" id="etaCountdown">
+              预计剩余 75 秒
+            </div>
+          </div>
+
+          <!-- File mini cards -->
+          <div class="glass" style="border-radius:14px;padding:14px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
+              <span style="font-size:12px;font-weight:600;color:var(--slate-400);">文件队列</span>
+              <span style="font-size:11px;color:var(--slate-600);" id="queueStatus">0/5 完成</span>
+            </div>
+            <div class="batch-files-list" id="batchFilesList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============== PHASE 3: RESULTS =============== -->
+    <div class="phase hidden" id="phase3">
+      <!-- Collapsed processing bar -->
+      <div class="collapsed-bar glass" style="border-color:rgba(34,197,94,0.15);background:rgba(34,197,94,0.03);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-400)" stroke-width="2.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          <span style="color:var(--green-400);font-weight:600;">5 个文件审核完成</span>
+          <span style="color:var(--slate-600);">&middot;</span>
+          <span style="color:var(--slate-400);" id="totalTimeText">14.3s</span>
+        </div>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-cards" id="summaryCards">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Results table -->
+      <div class="results-table-wrap glass" style="border-radius:14px;overflow:hidden;" id="resultsTableWrap">
+        <table class="results-table" id="resultsTable">
+          <thead>
+            <tr>
+              <th style="width:36px;text-align:center;">#</th>
+              <th>文件名</th>
+              <th style="width:100px;">招待类型</th>
+              <th style="width:100px;text-align:center;">审核建议</th>
+              <th style="width:70px;text-align:center;">问题数</th>
+              <th style="width:100px;">手写识别</th>
+              <th style="width:60px;text-align:center;">详情</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /phase-panel -->
+
+  <!-- ===== BOTTOM STATS BAR (48px) ===== -->
+  <footer class="app-footer">
+    <div class="footer-stat">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-9-11h2m18 0h2"/></svg>
+      <span class="value">10</span> 步骤
+    </div>
+    <div class="footer-stat">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      <span class="value">98.7%</span> 准确率
+    </div>
+    <div class="footer-stat">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="value">15s</span> 平均耗时
+    </div>
+    <div class="footer-stat">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+      <span class="value">24/7</span> 全天候
+    </div>
+  </footer>
+
+</div><!-- /app -->
+
+<script>
+// ===== DATA =====
+
+const FILES = [
+  { id: 1, name: 'KDBABXD2507090055.pdf', pages: 8, size: '4.35MB', sizeNum: 4.35, hwRatio: 62, hwLabel: '手写 62%', hwHigh: true },
+  { id: 2, name: 'KDBABXD2507090088.pdf', pages: 6, size: '3.21MB', sizeNum: 3.21, hwRatio: 18, hwLabel: '打印为主',  hwHigh: false },
+  { id: 3, name: 'KDBABXD2507100012.pdf', pages: 10, size: '5.67MB', sizeNum: 5.67, hwRatio: 78, hwLabel: '手写 78%', hwHigh: true },
+  { id: 4, name: 'KDBABXD2507100045.pdf', pages: 4, size: '2.14MB', sizeNum: 2.14, hwRatio: 12, hwLabel: '打印为主',  hwHigh: false },
+  { id: 5, name: 'KDBABXD2507100067.pdf', pages: 7, size: '3.89MB', sizeNum: 3.89, hwRatio: 55, hwLabel: '手写 55%', hwHigh: true },
+];
+
+const STEPS = [
+  { name: '报销资料输入',   icon: 'upload',   time: 0.8 },
+  { name: '报销过期日判定', icon: 'calendar', time: 1.2 },
+  { name: '报销单据拆分',   icon: 'scissors', time: 2.0 },
+  { name: '报销单据识别',   icon: 'layers',   time: 2.5 },
+  { name: '提取接待类型',   icon: 'search',   time: 1.0 },
+  { name: '判断接待类型',   icon: 'branch',   time: 0.8 },
+  { name: '公务接待审核',   icon: 'shield',   time: 3.5 },
+  { name: '审核内容汇总',   icon: 'clipboard',time: 1.5 },
+  { name: '审核结果编排',   icon: 'grid',     time: 1.0 },
+  { name: '审核结果输出',   icon: 'filecheck',time: 0.7 },
+];
+
+// Results per file (simulated)
+const FILE_RESULTS = [
+  {
+    type: '公务接待', verdict: '人工复核', verdictClass: 'amber', issueCount: 4,
+    hwConfidence: 87,
+    issues: [
+      { severity: 'error', text: '费用报销单申请部门未填写', detail: '报销单「申请部门」栏为空，应填写具体部门名称。' },
+      { severity: 'error', text: '公务接待清单接待类型未填写', detail: '接待类型栏为空，应标明公务接待、商务接待等具体类型。' },
+      { severity: 'warning', text: '公务接待清单主要行程安排未填写', detail: '行程安排栏空白，建议补充详细的公务活动日程。' },
+      { severity: 'error', text: '报销已超期（距今 271 天）', detail: '接待/发票日期 2025-06-11，已超过 90 天报销时限。' },
+    ]
+  },
+  {
+    type: '公务接待', verdict: '通过', verdictClass: 'green', issueCount: 0,
+    hwConfidence: 95,
+    issues: []
+  },
+  {
+    type: '公务接待', verdict: '人工复核', verdictClass: 'amber', issueCount: 3,
+    hwConfidence: 82,
+    issues: [
+      { severity: 'error', text: '接待清单陪餐人数超标', detail: '陪餐人数 6 人，超过接待对象人数 3 人的 1:1 上限。' },
+      { severity: 'warning', text: '发票金额与报销单不一致', detail: '发票总额 2,680 元，报销单填写 2,650 元，差额 30 元。' },
+      { severity: 'warning', text: '接待地点非定点餐厅', detail: '用餐地点「山间农家乐」不在公司定点接待名录中。' },
+    ]
+  },
+  {
+    type: '商务接待', verdict: '不通过', verdictClass: 'red', issueCount: 5,
+    hwConfidence: 96,
+    issues: [
+      { severity: 'error', text: '缺少接待审批单', detail: '未附公务接待审批表，不符合报销制度要求。' },
+      { severity: 'error', text: '无接待清单', detail: '缺少公务接待清单原件，无法核实接待人员信息。' },
+      { severity: 'error', text: '费用超接待标准', detail: '人均消费 420 元，超出同城公务接待 200 元/人标准。' },
+      { severity: 'warning', text: '发票开具项目不规范', detail: '发票品名为「餐费」，应开具为「餐饮服务」。' },
+      { severity: 'error', text: '报销已超期（距今 185 天）', detail: '接待日期 2025-09-07，已超过 90 天报销时限。' },
+    ]
+  },
+  {
+    type: '公务接待', verdict: '人工复核', verdictClass: 'amber', issueCount: 2,
+    hwConfidence: 84,
+    issues: [
+      { severity: 'warning', text: '接待对象单位名称缺失', detail: '接待清单「来访单位」栏未填写完整单位名称。' },
+      { severity: 'warning', text: '情况说明未附签名', detail: '接待情况说明文档缺少经办人签名和日期。' },
+    ]
+  },
+];
+
+// SVG icon map
+function stepIcon(type, size = 16) {
+  const s = size;
+  const icons = {
+    upload: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+    calendar: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    scissors: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>`,
+    layers: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l10-5 10 5-10 5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
+    search: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    branch: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
+    shield: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    clipboard: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>`,
+    grid: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+    filecheck: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>`,
+    check: `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>`,
+  };
+  return icons[type] || icons.filecheck;
+}
+
+// ===== INITIALIZATION =====
+
+let currentPhase = 1;
+
+// Auto-show files after a brief delay (simulate "files added" state)
+window.addEventListener('DOMContentLoaded', () => {
+  // Render file table immediately in shrunk state
+  setTimeout(() => {
+    showFilesAdded();
+  }, 800);
+});
+
+function showFilesAdded() {
+  const uploadArea = document.getElementById('uploadArea');
+  uploadArea.classList.add('upload-shrunk');
+
+  const tbody = document.getElementById('fileTableBody');
+  tbody.innerHTML = '';
+
+  FILES.forEach((f, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'file-row';
+    tr.style.animationDelay = `${i * 80}ms`;
+
+    const barClass = f.hwHigh ? 'high' : 'low';
+    tr.innerHTML = `
+      <td style="text-align:center;color:var(--slate-500);font-size:12px;">${f.id}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate-500)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-weight:500;color:var(--slate-200);font-size:12px;">${f.name}</span>
+        </div>
+      </td>
+      <td style="text-align:center;color:var(--slate-400);">${f.pages}页</td>
+      <td style="text-align:right;color:var(--slate-400);">${f.size}</td>
+      <td>
+        <div class="hw-bar">
+          <div class="hw-bar-track">
+            <div class="hw-bar-fill ${barClass}" style="width:${f.hwRatio}%;"></div>
+          </div>
+          <span style="font-size:11px;color:${f.hwHigh ? 'var(--red-400)' : 'var(--blue-400)'};white-space:nowrap;">${f.hwLabel}</span>
+        </div>
+      </td>
+      <td style="text-align:center;">
+        <span class="badge badge-blue" style="font-size:10px;padding:3px 8px;">就绪</span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== BATCH AUDIT SIMULATION =====
+
+let auditRunning = false;
+let currentFileIndex = 0;
+let currentStepIndex = 0;
+let totalStepsProcessed = 0;
+const TOTAL_STEPS_ALL = FILES.length * STEPS.length; // 50
+const STEP_SPEED = 250; // ms per step (fast for demo)
+
+function startBatchAudit() {
+  if (auditRunning) return;
+  auditRunning = true;
+
+  // Transition: Phase 1 -> Phase 2
+  switchPhase(1, 2);
+
+  // Build workflow timeline
+  buildWorkflowTimeline();
+
+  // Build batch file cards
+  buildBatchFileCards();
+
+  // Start processing
+  currentFileIndex = 0;
+  currentStepIndex = 0;
+  totalStepsProcessed = 0;
+
+  processNextStep();
+}
+
+function switchPhase(from, to) {
+  const phaseFrom = document.getElementById('phase' + from);
+  const phaseTo = document.getElementById('phase' + to);
+
+  phaseFrom.classList.remove('visible');
+  phaseFrom.classList.add('hidden');
+
+  // Small delay for transition
+  setTimeout(() => {
+    phaseTo.classList.remove('hidden');
+    phaseTo.classList.add('visible');
+  }, 100);
+
+  currentPhase = to;
+}
+
+function buildWorkflowTimeline() {
+  const container = document.getElementById('workflowTimeline');
+  container.innerHTML = '';
+
+  STEPS.forEach((step, i) => {
+    const isLast = i === STEPS.length - 1;
+
+    const stepEl = document.createElement('div');
+    stepEl.className = 'timeline-step';
+    stepEl.id = `step-${i}`;
+
+    stepEl.innerHTML = `
+      <div class="timeline-dot-col">
+        <div class="timeline-dot idle" id="step-dot-${i}">
+          ${stepIcon(step.icon, 16)}
+        </div>
+        ${!isLast ? `<div class="timeline-connector" id="step-conn-${i}"></div>` : ''}
+      </div>
+      <div class="timeline-content">
+        <div class="step-name idle" id="step-name-${i}">${step.name}</div>
+        <div class="step-status" id="step-status-${i}" style="color:var(--slate-600);">等待中</div>
+        <div id="step-progress-${i}" style="display:none;">
+          <div class="step-progress-bar" style="margin-top:4px;">
+            <div class="step-progress-fill" id="step-progress-fill-${i}" style="width:0%;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="flex-shrink:0;min-width:40px;text-align:right;" id="step-time-${i}"></div>
+    `;
+
+    container.appendChild(stepEl);
+  });
+}
+
+function buildBatchFileCards() {
+  const container = document.getElementById('batchFilesList');
+  container.innerHTML = '';
+
+  FILES.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'file-mini-card waiting';
+    card.id = `batch-file-${i}`;
+
+    card.innerHTML = `
+      <div style="width:28px;height:28px;border-radius:8px;background:rgba(51,65,85,0.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;" id="batch-file-icon-${i}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--slate-500)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:600;color:var(--slate-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="batch-file-name-${i}">${f.name}</div>
+        <div style="font-size:10px;color:var(--slate-600);margin-top:2px;" id="batch-file-status-${i}">等待中</div>
+      </div>
+      <div id="batch-file-badge-${i}"></div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+function processNextStep() {
+  if (currentFileIndex >= FILES.length) {
+    // All files done -> transition to results
+    finishProcessing();
+    return;
+  }
+
+  const file = FILES[currentFileIndex];
+  const step = STEPS[currentStepIndex];
+
+  // Update current file card to "current"
+  updateBatchFileCard(currentFileIndex, 'current', `步骤 ${currentStepIndex + 1}/10`);
+
+  // Update workflow timeline
+  updateTimelineStep(currentStepIndex, 'active');
+
+  // Update header text
+  document.getElementById('processingStatusText').textContent = `审核中 ${currentFileIndex + 1}/5`;
+  document.getElementById('currentStepNum').textContent = currentStepIndex + 1;
+
+  // Simulate progress bar fill
+  const progressEl = document.getElementById(`step-progress-${currentStepIndex}`);
+  const fillEl = document.getElementById(`step-progress-fill-${currentStepIndex}`);
+  if (progressEl) {
+    progressEl.style.display = 'block';
+    fillEl.style.width = '0%';
+    setTimeout(() => { fillEl.style.width = '100%'; }, 30);
+  }
+
+  // After step duration, complete the step
+  const speed = STEP_SPEED + Math.random() * 100;
+  setTimeout(() => {
+    completeStep();
+  }, speed);
+}
+
+function completeStep() {
+  const step = STEPS[currentStepIndex];
+
+  // Mark step as completed
+  updateTimelineStep(currentStepIndex, 'completed', step.time);
+
+  totalStepsProcessed++;
+  updateOverallProgress();
+
+  currentStepIndex++;
+
+  if (currentStepIndex >= STEPS.length) {
+    // File done
+    const result = FILE_RESULTS[currentFileIndex];
+    const statusClass = result.verdictClass === 'green' ? 'done-pass' :
+                        result.verdictClass === 'amber' ? 'done-review' : 'done-fail';
+    updateBatchFileCard(currentFileIndex, statusClass, result.verdict);
+
+    // Reset timeline for next file
+    currentStepIndex = 0;
+    currentFileIndex++;
+
+    if (currentFileIndex < FILES.length) {
+      // Reset all timeline steps for next file
+      setTimeout(() => {
+        resetTimeline();
+        processNextStep();
+      }, 300);
+    } else {
+      // All files done
+      setTimeout(() => {
+        finishProcessing();
+      }, 500);
+    }
+  } else {
+    processNextStep();
+  }
+}
+
+function updateTimelineStep(idx, state, time) {
+  const dot = document.getElementById(`step-dot-${idx}`);
+  const name = document.getElementById(`step-name-${idx}`);
+  const status = document.getElementById(`step-status-${idx}`);
+  const timeEl = document.getElementById(`step-time-${idx}`);
+  const progressEl = document.getElementById(`step-progress-${idx}`);
+
+  if (!dot) return;
+
+  // Remove all state classes
+  dot.classList.remove('idle', 'active', 'completed', 'error');
+  name.classList.remove('idle');
+
+  if (state === 'active') {
+    dot.classList.add('active');
+    status.innerHTML = '<span class="typing-cursor" style="color:var(--blue-400);">审核中</span>';
+    if (progressEl) progressEl.style.display = 'block';
+  } else if (state === 'completed') {
+    dot.classList.add('completed');
+    dot.innerHTML = stepIcon('check', 16);
+    status.innerHTML = `<span style="color:var(--green-400);">完成</span>`;
+    if (time && timeEl) {
+      timeEl.innerHTML = `<span style="font-size:11px;color:var(--green-400);">${time}s</span>`;
+    }
+    if (progressEl) progressEl.style.display = 'none';
+
+    // Connector
+    const conn = document.getElementById(`step-conn-${idx}`);
+    if (conn) conn.classList.add('completed');
+  } else if (state === 'idle') {
+    dot.classList.add('idle');
+    name.classList.add('idle');
+    status.innerHTML = '<span style="color:var(--slate-600);">等待中</span>';
+    if (timeEl) timeEl.innerHTML = '';
+    if (progressEl) progressEl.style.display = 'none';
+  }
+}
+
+function resetTimeline() {
+  STEPS.forEach((step, i) => {
+    const dot = document.getElementById(`step-dot-${i}`);
+    const conn = document.getElementById(`step-conn-${i}`);
+    const progressEl = document.getElementById(`step-progress-${i}`);
+
+    if (dot) {
+      dot.classList.remove('active', 'completed', 'error');
+      dot.classList.add('idle');
+      dot.innerHTML = stepIcon(step.icon, 16);
+    }
+    if (conn) conn.classList.remove('completed', 'active');
+
+    updateTimelineStep(i, 'idle');
+  });
+}
+
+function updateBatchFileCard(idx, stateClass, statusText) {
+  const card = document.getElementById(`batch-file-${idx}`);
+  const statusEl = document.getElementById(`batch-file-status-${idx}`);
+  const nameEl = document.getElementById(`batch-file-name-${idx}`);
+  const iconWrap = document.getElementById(`batch-file-icon-${idx}`);
+  const badgeEl = document.getElementById(`batch-file-badge-${idx}`);
+
+  if (!card) return;
+
+  card.className = 'file-mini-card ' + stateClass;
+
+  if (stateClass === 'current') {
+    statusEl.innerHTML = `<span style="color:var(--blue-400);">${statusText}</span>`;
+    nameEl.style.color = 'var(--slate-200)';
+    iconWrap.style.background = 'rgba(59,130,246,0.15)';
+    iconWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue-400)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    badgeEl.innerHTML = '';
+  } else if (stateClass === 'done-pass') {
+    statusEl.innerHTML = '';
+    nameEl.style.color = 'var(--slate-300)';
+    iconWrap.style.background = 'rgba(34,197,94,0.15)';
+    iconWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green-400)" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>`;
+    badgeEl.innerHTML = `<span class="badge badge-green" style="font-size:10px;padding:2px 8px;">通过</span>`;
+  } else if (stateClass === 'done-review') {
+    statusEl.innerHTML = '';
+    nameEl.style.color = 'var(--slate-300)';
+    iconWrap.style.background = 'rgba(245,158,11,0.15)';
+    iconWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--amber-400)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    badgeEl.innerHTML = `<span class="badge badge-amber" style="font-size:10px;padding:2px 8px;">人工复核</span>`;
+  } else if (stateClass === 'done-fail') {
+    statusEl.innerHTML = '';
+    nameEl.style.color = 'var(--slate-300)';
+    iconWrap.style.background = 'rgba(239,68,68,0.15)';
+    iconWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--red-400)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+    badgeEl.innerHTML = `<span class="badge badge-red" style="font-size:10px;padding:2px 8px;">不通过</span>`;
+  }
+}
+
+function updateOverallProgress() {
+  const pct = Math.round((totalStepsProcessed / TOTAL_STEPS_ALL) * 100);
+  const filesCompleted = currentStepIndex === 0 && currentFileIndex > 0 ? currentFileIndex : currentFileIndex;
+
+  // Circular progress
+  const circle = document.getElementById('progressCircle');
+  const circumference = 2 * Math.PI * 42; // ~263.89
+  const offset = circumference - (pct / 100) * circumference;
+  circle.style.strokeDashoffset = offset;
+
+  document.getElementById('progressPercent').textContent = pct + '%';
+
+  // ETA
+  const remaining = Math.max(0, Math.round(((TOTAL_STEPS_ALL - totalStepsProcessed) * STEP_SPEED) / 1000));
+  document.getElementById('etaCountdown').textContent = `预计剩余 ${remaining} 秒`;
+  document.getElementById('processingEtaText').textContent = `预计剩余 ${remaining} 秒`;
+
+  // Queue status
+  const done = currentFileIndex;
+  document.getElementById('queueStatus').textContent = `${done}/5 完成`;
+}
+
+function finishProcessing() {
+  auditRunning = false;
+
+  // Calculate total simulated time
+  let totalTime = 0;
+  FILES.forEach((f, i) => {
+    STEPS.forEach(s => totalTime += s.time);
+  });
+  const displayTime = (totalTime / FILES.length + Math.random() * 2).toFixed(1);
+  document.getElementById('totalTimeText').textContent = displayTime + 's';
+
+  // Switch to phase 3
+  switchPhase(2, 3);
+
+  // Build summary cards
+  setTimeout(() => {
+    buildSummaryCards();
+    buildResultsTable();
+  }, 200);
+}
+
+function buildSummaryCards() {
+  const container = document.getElementById('summaryCards');
+  container.innerHTML = '';
+
+  const passCount = FILE_RESULTS.filter(r => r.verdictClass === 'green').length;
+  const reviewCount = FILE_RESULTS.filter(r => r.verdictClass === 'amber').length;
+  const failCount = FILE_RESULTS.filter(r => r.verdictClass === 'red').length;
+
+  const cards = [
+    { label: '审核总数', value: FILES.length, color: 'var(--slate-200)', bg: 'var(--bg-card)', border: 'var(--border-subtle)' },
+    { label: '通过', value: passCount, color: 'var(--green-400)', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.15)' },
+    { label: '人工复核', value: reviewCount, color: 'var(--amber-400)', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.15)' },
+    { label: '不通过', value: failCount, color: 'var(--red-400)', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.15)' },
+  ];
+
+  cards.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'summary-card';
+    card.style.background = c.bg;
+    card.style.border = `1px solid ${c.border}`;
+    card.style.animationDelay = `${i * 100}ms`;
+
+    card.innerHTML = `
+      <div class="stat-number" style="font-size:32px;font-weight:800;color:${c.color};">${c.value}</div>
+      <div style="font-size:12px;color:var(--slate-500);margin-top:4px;">${c.label}</div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+function buildResultsTable() {
+  const tbody = document.getElementById('resultsTableBody');
+  tbody.innerHTML = '';
+
+  FILES.forEach((f, i) => {
+    const result = FILE_RESULTS[i];
+
+    // Main row
+    const tr = document.createElement('tr');
+    tr.className = 'result-row';
+    tr.style.animationDelay = `${i * 80}ms`;
+    tr.id = `result-row-${i}`;
+    tr.onclick = () => toggleResultDetail(i);
+
+    const badgeClass = `badge-${result.verdictClass}`;
+    const issueColor = result.issueCount === 0 ? 'var(--green-400)' :
+                       result.issueCount <= 2 ? 'var(--amber-400)' : 'var(--red-400)';
+
+    tr.innerHTML = `
+      <td style="text-align:center;color:var(--slate-500);font-size:12px;">${i + 1}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate-500)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-weight:500;font-size:12px;">${f.name}</span>
+        </div>
+      </td>
+      <td><span class="badge badge-blue" style="font-size:10px;padding:3px 8px;">${result.type}</span></td>
+      <td style="text-align:center;"><span class="badge ${badgeClass}" style="font-size:10px;padding:3px 8px;">${result.verdict}</span></td>
+      <td style="text-align:center;color:${issueColor};font-weight:600;">${result.issueCount}</td>
+      <td>
+        <div class="hw-bar">
+          <div class="hw-bar-track" style="width:50px;">
+            <div class="hw-bar-fill ${result.hwConfidence > 90 ? 'low' : 'high'}" style="width:${result.hwConfidence}%;"></div>
+          </div>
+          <span style="font-size:11px;color:var(--slate-400);">${result.hwConfidence}%</span>
+        </div>
+      </td>
+      <td style="text-align:center;">
+        <span class="chevron" id="chevron-${i}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // Detail row (hidden)
+    const detailTr = document.createElement('tr');
+    detailTr.id = `result-detail-row-${i}`;
+    const detailTd = document.createElement('td');
+    detailTd.colSpan = 7;
+    detailTd.style.padding = '0';
+
+    const detailDiv = document.createElement('div');
+    detailDiv.className = 'result-detail';
+    detailDiv.id = `result-detail-${i}`;
+
+    if (result.issues.length > 0) {
+      let issuesHtml = '<div class="result-detail-inner">';
+      result.issues.forEach(issue => {
+        const sevColor = issue.severity === 'error' ? 'var(--red-400)' : 'var(--amber-400)';
+        const sevIcon = issue.severity === 'error'
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${sevColor}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${sevColor}" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+        issuesHtml += `
+          <div class="issue-item">
+            <div style="flex-shrink:0;margin-top:1px;">${sevIcon}</div>
+            <div>
+              <div style="font-weight:600;color:${sevColor};">${issue.text}</div>
+              <div style="color:var(--slate-500);margin-top:2px;">${issue.detail}</div>
+            </div>
+          </div>
+        `;
+      });
+      issuesHtml += '</div>';
+      detailDiv.innerHTML = issuesHtml;
+    } else {
+      detailDiv.innerHTML = `
+        <div class="result-detail-inner">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--green-400);font-size:12px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            所有审核项目均合规，无需人工复核
+          </div>
+        </div>
+      `;
+    }
+
+    detailTd.appendChild(detailDiv);
+    detailTr.appendChild(detailTd);
+    tbody.appendChild(detailTr);
+  });
+}
+
+function toggleResultDetail(idx) {
+  const detail = document.getElementById(`result-detail-${idx}`);
+  const chevron = document.getElementById(`chevron-${idx}`);
+  if (!detail) return;
+
+  const isExpanded = detail.classList.contains('expanded');
+
+  // Close all others
+  document.querySelectorAll('.result-detail.expanded').forEach(el => {
+    el.classList.remove('expanded');
+  });
+  document.querySelectorAll('.chevron.open').forEach(el => {
+    el.classList.remove('open');
+  });
+
+  if (!isExpanded) {
+    detail.classList.add('expanded');
+    if (chevron) chevron.classList.add('open');
+  }
+}
+
+</script>
+
+</body>
+</html>

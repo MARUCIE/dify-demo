@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路桥报销审核智能体 - Hybrid Professional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: { 950: '#020617', 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
+                        accent: { 500: '#3b82f6', 600: '#2563eb', 400: '#60a5fa', 300: '#93c5fd' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+            50% { border-color: rgba(59, 130, 246, 0.8); box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(-12px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes flow-right {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes flow-down {
+            0% { background-position: 0 -200%; }
+            100% { background-position: 0 200%; }
+        }
+        @keyframes check-scale {
+            0% { transform: scale(0) rotate(-45deg); }
+            50% { transform: scale(1.15) rotate(0deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes dot-pulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-active {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        .slide-in {
+            animation: slideInRight 0.4s ease-out forwards;
+        }
+        .flow-h {
+            background: linear-gradient(90deg, transparent 0%, #3b82f6 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: flow-right 1.5s linear infinite;
+        }
+        .flow-v {
+            background: linear-gradient(180deg, transparent 0%, #3b82f6 50%, transparent 100%);
+            background-size: 100% 200%;
+            animation: flow-down 1.5s linear infinite;
+        }
+        .check-anim {
+            animation: check-scale 0.4s ease-out forwards;
+        }
+        .upload-dashed {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='16' ry='16' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='10%2c 8' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+        }
+        .dot-loading span {
+            display: inline-block;
+            animation: dot-pulse 1.4s ease-in-out infinite;
+        }
+        .dot-loading span:nth-child(2) { animation-delay: 0.2s; }
+        .dot-loading span:nth-child(3) { animation-delay: 0.4s; }
+        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+        /* Grid connection lines via pseudo-elements */
+        .grid-step { position: relative; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-900 min-h-screen">
+
+    <!-- Hero Header with Dark Gradient -->
+    <header class="bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 relative overflow-hidden">
+        <!-- Decorative grid -->
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;none&quot; fill-rule=&quot;evenodd&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;1&quot;%3E%3Cpath d=&quot;M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z&quot;/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"></div>
+        <!-- Gradient orbs -->
+        <div class="absolute top-0 right-1/4 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 left-1/4 w-64 h-64 bg-cyan-500/8 rounded-full blur-3xl"></div>
+
+        <div class="relative max-w-6xl mx-auto px-6">
+            <!-- Nav -->
+            <nav class="flex items-center justify-between py-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/10">
+                        <svg class="w-5 h-5 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold text-white tracking-tight">路桥报销审核智能体</h1>
+                        <p class="text-[10px] text-gray-400 tracking-wider uppercase">Expense Audit Agent</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden md:flex items-center gap-1 text-xs text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        <span>系统就绪</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded font-mono border border-white/5">v1.0</span>
+                </div>
+            </nav>
+            <!-- Hero text -->
+            <div class="py-10 text-center">
+                <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight">智能报销审核，合规无忧</h2>
+                <p class="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">基于 AI 大模型的报销凭证智能审核系统，自动完成 PDF 解析、发票验真、合规检查、风险评估全流程，实现报销审核效率提升 10 倍。</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 -mt-6 relative z-10">
+
+        <!-- Section 1: Upload Card (overlapping hero) -->
+        <section class="mb-10 fade-in-up">
+            <div class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6 md:p-8">
+                <div class="flex items-center gap-2 mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-accent-500 text-white flex items-center justify-center text-xs font-bold shadow-sm shadow-blue-200">1</div>
+                    <h3 class="text-sm font-semibold text-gray-900">上传报销凭证</h3>
+                    <span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-2">Upload</span>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <div class="upload-dashed rounded-2xl p-10 text-center cursor-pointer hover:bg-blue-50/50 transition-colors group">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center border border-blue-100 group-hover:scale-105 transition-transform">
+                                <svg class="w-7 h-7 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                            <p class="text-sm font-medium text-gray-700 mb-1">拖拽 PDF 文件到此处上传</p>
+                            <p class="text-xs text-gray-400">或点击浏览文件 -- 支持 PDF，最大 20MB</p>
+                            <div class="mt-5 inline-flex items-center gap-2.5 bg-accent-500/5 border border-accent-500/15 text-accent-600 px-4 py-2.5 rounded-xl text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="font-medium">2024-0312-报销凭证.pdf</span>
+                                <span class="text-xs text-gray-400">(2.4 MB)</span>
+                                <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                    <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-3.5">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">报销日期</label>
+                            <input type="date" value="2024-03-12" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none bg-gray-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">报销部门</label>
+                            <select class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none bg-gray-50/50">
+                                <option>工程一部</option>
+                                <option>工程二部</option>
+                                <option>综合管理部</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">报销人</label>
+                            <input type="text" value="张明远" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none bg-gray-50/50">
+                        </div>
+                        <button onclick="startWorkflow()" class="w-full bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-accent-500/25 mt-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            运行审核流程
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Workflow - 2x5 Grid -->
+        <section class="mb-10 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-accent-500 text-white flex items-center justify-center text-xs font-bold shadow-sm shadow-blue-200">2</div>
+                    <h3 class="text-sm font-semibold text-gray-900">审核流程</h3>
+                    <span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-2">Pipeline</span>
+                </div>
+                <div class="flex items-center gap-4 text-xs text-gray-500">
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>已完成</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-accent-500 animate-pulse"></span>进行中</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-gray-300"></span>等待中</span>
+                </div>
+            </div>
+
+            <!-- 2x5 Grid -->
+            <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 p-6 md:p-8">
+                <div class="grid grid-cols-5 gap-3 mb-3" id="gridRow1">
+                    <!-- Row 1: Steps 1-5 rendered by JS -->
+                </div>
+                <!-- Connection indicators between rows -->
+                <div class="grid grid-cols-5 gap-3 mb-3">
+                    <div class="flex justify-center" id="conn1"><div class="w-0.5 h-4 bg-green-300 rounded-full"></div></div>
+                    <div class="flex justify-center" id="conn2"><div class="w-0.5 h-4 bg-green-300 rounded-full"></div></div>
+                    <div class="flex justify-center" id="conn3"><div class="w-0.5 h-4 bg-green-300 rounded-full"></div></div>
+                    <div class="flex justify-center" id="conn4"><div class="w-0.5 h-4 bg-green-300 rounded-full"></div></div>
+                    <div class="flex justify-center" id="conn5"><div class="w-0.5 h-4 bg-green-300 rounded-full"></div></div>
+                </div>
+                <div class="grid grid-cols-5 gap-3" id="gridRow2">
+                    <!-- Row 2: Steps 6-10 rendered by JS -->
+                </div>
+                <!-- Progress -->
+                <div class="mt-6 pt-5 border-t border-gray-100">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-500">总体进度</span>
+                        <span class="text-xs font-medium text-gray-700" id="progressText">7 / 10 步骤完成</span>
+                    </div>
+                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-accent-500 to-cyan-500 rounded-full transition-all duration-1000" id="progressBar" style="width: 70%"></div>
+                    </div>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-[10px] text-gray-400">已用时 12.3s</span>
+                        <span class="text-[10px] text-gray-400">预计剩余 ~4s</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Results -->
+        <section class="mb-16 fade-in-up" style="animation-delay: 0.2s;">
+            <div class="flex items-center gap-2 mb-5">
+                <div class="w-7 h-7 rounded-lg bg-accent-500 text-white flex items-center justify-center text-xs font-bold shadow-sm shadow-blue-200">3</div>
+                <h3 class="text-sm font-semibold text-gray-900">审核结果</h3>
+                <span class="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-2">Results</span>
+            </div>
+
+            <!-- Top Summary Bar -->
+            <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 p-6 mb-4">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="text-center p-3 rounded-xl bg-gray-50">
+                        <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">招待类型</p>
+                        <p class="text-sm font-bold text-gray-900">公务接待</p>
+                    </div>
+                    <div class="text-center p-3 rounded-xl bg-gray-50">
+                        <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">报销金额</p>
+                        <p class="text-sm font-bold text-gray-900">&yen;12,680</p>
+                    </div>
+                    <div class="text-center p-3 rounded-xl bg-gray-50">
+                        <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">人均标准</p>
+                        <p class="text-sm font-bold text-gray-900">&yen;158.50</p>
+                    </div>
+                    <div class="text-center p-3 rounded-xl bg-gray-50">
+                        <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">合规评分</p>
+                        <div class="flex items-center justify-center gap-2">
+                            <div class="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full" style="width: 62%"></div>
+                            </div>
+                            <p class="text-sm font-bold text-amber-600">62</p>
+                        </div>
+                    </div>
+                    <div class="text-center p-3 rounded-xl bg-amber-50 border border-amber-200">
+                        <p class="text-[10px] text-amber-600 mb-1 uppercase tracking-wider font-medium">审核建议</p>
+                        <div class="flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                            <p class="text-sm font-bold text-amber-700">人工复核</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Issues -->
+            <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-5">
+                    <h4 class="text-sm font-semibold text-gray-900">发现问题</h4>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200">4 项异常</span>
+                </div>
+                <div class="space-y-3">
+                    <!-- Issue 1 -->
+                    <div class="group rounded-xl border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/80 to-transparent p-5 border border-red-100 hover:shadow-md hover:shadow-red-100/50 transition-all">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <h5 class="text-sm font-semibold text-red-900">人均消费超标</h5>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600">高风险</span>
+                                </div>
+                                <p class="text-xs text-gray-600 leading-relaxed">人均消费 &yen;158.50，超出当地公务接待标准 &yen;120.00/人，超标率 <span class="font-semibold text-red-600">32.1%</span>。依据《党政机关国内公务接待管理规定》第十条。</p>
+                            </div>
+                            <div class="flex-shrink-0 text-right">
+                                <p class="text-lg font-bold text-red-500">+32.1%</p>
+                                <p class="text-[10px] text-gray-400">超标比例</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Issue 2 -->
+                    <div class="group rounded-xl border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/80 to-transparent p-5 border border-red-100 hover:shadow-md hover:shadow-red-100/50 transition-all">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <h5 class="text-sm font-semibold text-red-900">发票日期与报销日期不一致</h5>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600">高风险</span>
+                                </div>
+                                <p class="text-xs text-gray-600 leading-relaxed">发票开具日期为 2024-02-28，报销申请日期为 2024-03-12，间隔超过 <span class="font-semibold text-red-600">10 个工作日</span>。根据公司财务制度，应在消费后 5 个工作日内提交。</p>
+                            </div>
+                            <div class="flex-shrink-0 text-right">
+                                <p class="text-lg font-bold text-red-500">+10d</p>
+                                <p class="text-[10px] text-gray-400">超期天数</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Issue 3 -->
+                    <div class="group rounded-xl border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/80 to-transparent p-5 border border-amber-100 hover:shadow-md hover:shadow-amber-100/50 transition-all">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <h5 class="text-sm font-semibold text-amber-900">陪餐人数比例异常</h5>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-600">中风险</span>
+                                </div>
+                                <p class="text-xs text-gray-600 leading-relaxed">本方陪餐人数 50 人，来访人数 30 人，陪餐比例 <span class="font-semibold text-amber-600">1.67:1</span>，超出规定的 1:1 上限。依据《规定》第九条。</p>
+                            </div>
+                            <div class="flex-shrink-0 text-right">
+                                <p class="text-lg font-bold text-amber-500">1.67:1</p>
+                                <p class="text-[10px] text-gray-400">陪餐比例</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Issue 4 -->
+                    <div class="group rounded-xl border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/80 to-transparent p-5 border border-amber-100 hover:shadow-md hover:shadow-amber-100/50 transition-all">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <h5 class="text-sm font-semibold text-amber-900">缺少公函附件</h5>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-600">中风险</span>
+                                </div>
+                                <p class="text-xs text-gray-600 leading-relaxed">未检测到来访单位公函或接待审批单扫描件，公务接待须附来函及接待方案。建议补充上传相关文件。</p>
+                            </div>
+                            <div class="flex-shrink-0 text-right">
+                                <p class="text-lg font-bold text-amber-500">MISS</p>
+                                <p class="text-[10px] text-gray-400">附件缺失</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-gray-100">
+                    <button class="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-blue-700 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-accent-500/20 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        导出审核报告
+                    </button>
+                    <button class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-xl border border-gray-200 transition-colors shadow-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
+                        转交人工审核
+                    </button>
+                    <button class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-xl border border-gray-200 transition-colors shadow-sm flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        重新审核
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-12 text-gray-400 text-xs leading-[2.2]">
+        <p>路桥报销审核智能体 v1.0 -- Variant 3: Hybrid Professional</p>
+        <p>Maurice | maurice_wen@proton.me</p>
+    </footer>
+
+    <script>
+        const steps = [
+            { id: 1, name: 'PDF 解析', desc: '提取文档内容', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>', status: 'done', time: '1.2s' },
+            { id: 2, name: 'OCR 识别', desc: '图像文字识别', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>', status: 'done', time: '2.4s' },
+            { id: 3, name: '信息抽取', desc: '关键字段提取', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>', status: 'done', time: '1.8s' },
+            { id: 4, name: '发票验真', desc: '税务系统校验', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>', status: 'done', time: '3.1s' },
+            { id: 5, name: '费用分类', desc: '智能识别类型', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>', status: 'done', time: '0.8s' },
+            { id: 6, name: '标准匹配', desc: '地方接待标准', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>', status: 'done', time: '0.6s' },
+            { id: 7, name: '合规检查', desc: '核对合规要求', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>', status: 'done', time: '1.5s' },
+            { id: 8, name: '风险评估', desc: 'AI 风险评分', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>', status: 'active', time: '...' },
+            { id: 9, name: '建议生成', desc: '生成处理建议', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>', status: 'pending', time: '--' },
+            { id: 10, name: '报告输出', desc: '结构化报告', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>', status: 'pending', time: '--' },
+        ];
+
+        function renderCard(step) {
+            const isDone = step.status === 'done';
+            const isActive = step.status === 'active';
+
+            const borderClass = isDone
+                ? 'border-green-200 bg-green-50/50'
+                : isActive
+                    ? 'border-accent-500 bg-accent-500/5 pulse-active'
+                    : 'border-gray-200 bg-gray-50/50';
+            const iconBg = isDone
+                ? 'bg-green-100'
+                : isActive
+                    ? 'bg-accent-500/10'
+                    : 'bg-gray-100';
+            const iconColor = isDone ? 'text-green-600' : isActive ? 'text-accent-500' : 'text-gray-400';
+            const nameColor = isDone ? 'text-green-800' : isActive ? 'text-accent-700' : 'text-gray-500';
+
+            return `
+                <div class="grid-step border ${borderClass} rounded-xl p-3 text-center transition-all hover:shadow-md">
+                    <div class="w-9 h-9 ${iconBg} rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        ${isDone
+                            ? '<svg class="w-4 h-4 text-green-600 check-anim" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
+                            : isActive
+                                ? `<svg class="w-4.5 h-4.5 ${iconColor} animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">${step.icon}</svg>`
+                                : `<svg class="w-4 h-4 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">${step.icon}</svg>`
+                        }
+                    </div>
+                    <p class="text-[11px] font-semibold ${nameColor} mb-0.5">${step.name}</p>
+                    <p class="text-[9px] text-gray-400 leading-tight">${step.desc}</p>
+                    <p class="text-[9px] font-mono ${isDone ? 'text-green-500' : isActive ? 'text-accent-500' : 'text-gray-300'} mt-1">${step.time}</p>
+                </div>
+            `;
+        }
+
+        function renderGrid() {
+            const row1 = document.getElementById('gridRow1');
+            const row2 = document.getElementById('gridRow2');
+            row1.innerHTML = steps.slice(0, 5).map(renderCard).join('');
+            row2.innerHTML = steps.slice(5, 10).map(renderCard).join('');
+
+            // Update connectors
+            for (let i = 0; i < 5; i++) {
+                const topStep = steps[i];
+                const botStep = steps[i + 5];
+                const conn = document.getElementById(`conn${i + 1}`);
+                if (topStep.status === 'done' && botStep.status === 'done') {
+                    conn.innerHTML = '<div class="w-0.5 h-4 bg-green-300 rounded-full"></div>';
+                } else if (topStep.status === 'done' && botStep.status === 'active') {
+                    conn.innerHTML = '<div class="w-0.5 h-4 flow-v rounded-full"></div>';
+                } else if (topStep.status === 'done' || topStep.status === 'active') {
+                    conn.innerHTML = '<div class="w-0.5 h-4 bg-gray-200 rounded-full"></div>';
+                } else {
+                    conn.innerHTML = '<div class="w-0.5 h-4 bg-gray-200 rounded-full"></div>';
+                }
+            }
+        }
+
+        function startWorkflow() {
+            let currentStep = 0;
+            steps.forEach(s => { s.status = 'pending'; s.time = '--'; });
+            renderGrid();
+
+            const times = ['1.2s', '2.4s', '1.8s', '3.1s', '0.8s', '0.6s', '1.5s', '1.1s', '0.9s', '0.7s'];
+            const interval = setInterval(() => {
+                if (currentStep > 0) {
+                    steps[currentStep - 1].status = 'done';
+                    steps[currentStep - 1].time = times[currentStep - 1];
+                }
+                if (currentStep < steps.length) {
+                    steps[currentStep].status = 'active';
+                    steps[currentStep].time = '...';
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                }
+                const doneCount = steps.filter(s => s.status === 'done').length;
+                document.getElementById('progressText').textContent = `${doneCount} / 10 步骤完成`;
+                document.getElementById('progressBar').style.width = `${doneCount * 10}%`;
+                renderGrid();
+            }, 800);
+        }
+
+        renderGrid();
+    </script>
+</body>
+</html>
