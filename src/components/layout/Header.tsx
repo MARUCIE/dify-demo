@@ -3,16 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CircleCheck, Sun, Moon } from 'lucide-react';
+import { DURATION } from '@/lib/animations';
 
 function ThemeToggle() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.setAttribute('data-theme', saved);
-    }
+    const resolved = saved ?? 'dark';
+    setTheme(resolved);
+    document.documentElement.setAttribute('data-theme', resolved);
   }, []);
 
   const toggle = useCallback(() => {
@@ -41,7 +41,7 @@ export default function Header() {
       className="flex items-center justify-between py-3 mb-2"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
+      transition={{ duration: DURATION.slow, ease: 'easeOut' }}
     >
       <div className="flex items-center gap-4">
         {/* Logo */}
@@ -51,7 +51,7 @@ export default function Header() {
             width: 44,
             height: 44,
             borderRadius: 12,
-            background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+            background: 'linear-gradient(135deg, #0D9488, #0891B2)',
           }}
         >
           <CircleCheck size={24} color="white" strokeWidth={2} />
@@ -74,20 +74,21 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <span className="badge badge-blue">
           <motion.span
             style={{
               width: 6,
               height: 6,
               borderRadius: '50%',
-              background: '#3b82f6',
+              background: '#0D9488',
               display: 'inline-block',
             }}
             animate={{
               boxShadow: [
-                '0 0 4px rgba(59,130,246,0.4)',
-                '0 0 12px rgba(59,130,246,0.8)',
-                '0 0 4px rgba(59,130,246,0.4)',
+                '0 0 4px rgba(13,148,136,0.4)',
+                '0 0 12px rgba(13,148,136,0.8)',
+                '0 0 4px rgba(13,148,136,0.4)',
               ],
             }}
             transition={{ duration: 2, repeat: Infinity }}

@@ -6,6 +6,7 @@ import {
   Upload, X, Calendar, Play, FolderOpen, FileText, AlertTriangle,
 } from 'lucide-react';
 import type { BatchFile } from '@/lib/types';
+import { DURATION, EASE_DEFAULT } from '@/lib/animations';
 
 // -- Constants --
 
@@ -29,7 +30,7 @@ interface UploadZoneProps {
   files: BatchFile[];
   onFilesAdd: (files: File[]) => void;
   onFileRemove: (id: string) => void;
-  onStartAudit: () => void;
+  onStartAudit: (auditDate: string) => void;
   disabled?: boolean;
 }
 
@@ -42,9 +43,9 @@ function formatFileSize(bytes: number): string {
 }
 
 function getHandwritingColor(ratio: number): { bar: string; bg: string } {
-  if (ratio < 0.3) return { bar: '#4ade80', bg: 'rgba(34,197,94,0.15)' };
-  if (ratio < 0.6) return { bar: '#fbbf24', bg: 'rgba(245,158,11,0.15)' };
-  return { bar: '#f87171', bg: 'rgba(239,68,68,0.15)' };
+  if (ratio < 0.3) return { bar: '#059669', bg: 'rgba(34,197,94,0.15)' };
+  if (ratio < 0.6) return { bar: '#D97706', bg: 'rgba(245,158,11,0.15)' };
+  return { bar: '#DC2626', bg: 'rgba(239,68,68,0.15)' };
 }
 
 /**
@@ -225,7 +226,7 @@ export default function UploadZone({
     <motion.section
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, delay: 0.3, ease: [0.4, 0, 0.2, 1] as const }}
+      transition={{ duration: DURATION.slower, delay: 0.3, ease: EASE_DEFAULT }}
       className="flex-1 flex flex-col min-h-0"
     >
       {/* Section header */}
@@ -236,7 +237,7 @@ export default function UploadZone({
             width: 32,
             height: 32,
             borderRadius: 8,
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            background: 'linear-gradient(135deg, #0D9488, #0F766E)',
           }}
         >
           <Upload size={16} color="white" strokeWidth={2.5} />
@@ -278,7 +279,7 @@ export default function UploadZone({
               }}
             >
               {validationErrors.map((err, i) => (
-                <div key={i} className="flex items-center gap-2" style={{ fontSize: 13, color: '#f87171', lineHeight: 1.8 }}>
+                <div key={i} className="flex items-center gap-2" style={{ fontSize: 13, color: '#DC2626', lineHeight: 1.8 }}>
                   <AlertTriangle size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
                   {err}
                 </div>
@@ -301,7 +302,7 @@ export default function UploadZone({
           }}
           role="button"
           tabIndex={0}
-          aria-label={hasFiles ? '拖拽更多文件或点击选择' : '拖拽文件或文件夹至此上传'}
+          aria-label={hasFiles ? '拖拽更多文件或文件夹至此，或点击选择' : '拖拽文件或文件夹至此，或点击选择文件'}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -326,7 +327,7 @@ export default function UploadZone({
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-3"
               >
-                <FolderOpen size={18} color="#60a5fa" strokeWidth={1.5} />
+                <FolderOpen size={18} color="#0D9488" strokeWidth={1.5} />
                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   拖拽更多文件或文件夹至此，或点击选择
                 </span>
@@ -351,15 +352,15 @@ export default function UploadZone({
                       position: 'absolute',
                       inset: -12,
                       borderRadius: 28,
-                      border: '1.5px solid rgba(59,130,246,0.15)',
+                      border: '1.5px solid rgba(13,148,136,0.15)',
                     }}
                     animate={{
                       scale: [1, 1.08, 1],
                       opacity: [0.4, 0.8, 0.4],
                       borderColor: [
-                        'rgba(59,130,246,0.15)',
-                        'rgba(139,92,246,0.3)',
-                        'rgba(59,130,246,0.15)',
+                        'rgba(13,148,136,0.15)',
+                        'rgba(8,145,178,0.3)',
+                        'rgba(13,148,136,0.15)',
                       ],
                     }}
                     transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
@@ -370,22 +371,22 @@ export default function UploadZone({
                       width: 88,
                       height: 88,
                       borderRadius: 22,
-                      background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))',
-                      border: '1px solid rgba(59,130,246,0.2)',
+                      background: 'linear-gradient(135deg, rgba(13,148,136,0.1), rgba(8,145,178,0.06))',
+                      border: '1px solid rgba(13,148,136,0.2)',
                     }}
                     animate={{
                       boxShadow: [
-                        '0 0 20px rgba(59,130,246,0.1), inset 0 0 20px rgba(59,130,246,0.05)',
-                        '0 0 40px rgba(59,130,246,0.2), inset 0 0 30px rgba(59,130,246,0.1)',
-                        '0 0 20px rgba(59,130,246,0.1), inset 0 0 20px rgba(59,130,246,0.05)',
+                        '0 0 20px rgba(13,148,136,0.1), inset 0 0 20px rgba(13,148,136,0.05)',
+                        '0 0 40px rgba(13,148,136,0.2), inset 0 0 30px rgba(13,148,136,0.1)',
+                        '0 0 20px rgba(13,148,136,0.1), inset 0 0 20px rgba(13,148,136,0.05)',
                       ],
                     }}
                     transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Upload size={38} color="#60a5fa" strokeWidth={1.5} />
+                    <Upload size={38} color="#0D9488" strokeWidth={1.5} />
                   </motion.div>
                 </div>
-                <p style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
                   拖拽文件或文件夹至此
                 </p>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -438,7 +439,7 @@ export default function UploadZone({
                   maxHeight: 400,
                   overflowY: 'auto',
                   borderRadius: 10,
-                  border: '1px solid rgba(71,85,105,0.15)',
+                  border: '1px solid rgba(13,148,136,0.15)',
                 }}
               >
                 <AnimatePresence initial={false}>
@@ -456,16 +457,16 @@ export default function UploadZone({
                           gridTemplateColumns: '1fr 90px 60px 160px 44px',
                           gap: 12,
                           padding: '10px 16px',
-                          borderTop: index > 0 ? '1px solid rgba(71,85,105,0.1)' : 'none',
-                          background: index % 2 === 0 ? 'rgba(15,23,42,0.4)' : 'transparent',
+                          borderTop: index > 0 ? '1px solid rgba(13,148,136,0.1)' : 'none',
+                          background: index % 2 === 0 ? 'rgba(13,148,136,0.03)' : 'transparent',
                           transition: 'background 0.2s',
                         }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.05)'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = index % 2 === 0 ? 'rgba(15,23,42,0.4)' : 'transparent'; }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(13,148,136,0.06)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = index % 2 === 0 ? 'rgba(13,148,136,0.03)' : 'transparent'; }}
                       >
                         {/* File name */}
                         <div className="flex items-center gap-2.5" style={{ minWidth: 0 }}>
-                          <FileText size={15} color="#60a5fa" strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                          <FileText size={15} color="#0D9488" strokeWidth={1.5} style={{ flexShrink: 0 }} />
                           <span
                             style={{
                               fontSize: 13,
@@ -498,14 +499,14 @@ export default function UploadZone({
                               flex: 1,
                               height: 6,
                               borderRadius: 3,
-                              background: 'rgba(51,65,85,0.4)',
+                              background: 'rgba(209,224,222,0.4)',
                               overflow: 'hidden',
                             }}
                           >
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${Math.round(bf.handwritingRatio * 100)}%` }}
-                              transition={{ duration: 0.6, delay: index * 0.05, ease: 'easeOut' }}
+                              transition={{ duration: DURATION.slow, delay: index * 0.05, ease: 'easeOut' }}
                               style={{
                                 height: '100%',
                                 borderRadius: 3,
@@ -538,7 +539,7 @@ export default function UploadZone({
                             borderRadius: 8,
                             border: 'none',
                             background: 'rgba(239,68,68,0.08)',
-                            color: '#f87171',
+                            color: '#DC2626',
                             cursor: disabled ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
@@ -571,7 +572,7 @@ export default function UploadZone({
                 style={{
                   marginTop: 24,
                   paddingTop: 20,
-                  borderTop: '1px solid rgba(71,85,105,0.2)',
+                  borderTop: '1px solid rgba(13,148,136,0.2)',
                 }}
               >
                 {/* Date picker */}
@@ -590,13 +591,13 @@ export default function UploadZone({
                   <div
                     className="flex items-center gap-2.5"
                     style={{
-                      background: 'rgba(30,41,59,0.8)',
-                      border: '1px solid rgba(71,85,105,0.3)',
+                      background: 'var(--glass-bg)',
+                      border: '1px solid var(--glass-border)',
                       borderRadius: 10,
                       padding: '10px 14px',
                     }}
                   >
-                    <Calendar size={16} color="#94a3b8" strokeWidth={2} />
+                    <Calendar size={16} color="var(--text-muted)" strokeWidth={2} />
                     <input
                       type="date"
                       value={auditDate}
@@ -612,7 +613,7 @@ export default function UploadZone({
                         fontFamily: 'inherit',
                         width: '100%',
                         cursor: disabled ? 'not-allowed' : 'pointer',
-                        colorScheme: 'dark',
+                        colorScheme: 'inherit',
                       }}
                     />
                   </div>
@@ -625,7 +626,7 @@ export default function UploadZone({
                 <motion.button
                   className="btn-primary flex items-center justify-center gap-2.5"
                   style={{ minWidth: 220, height: 48 }}
-                  onClick={onStartAudit}
+                  onClick={() => onStartAudit(auditDate)}
                   disabled={!hasFiles || disabled}
                   whileHover={hasFiles && !disabled ? { scale: 1.02 } : {}}
                   whileTap={hasFiles && !disabled ? { scale: 0.98 } : {}}

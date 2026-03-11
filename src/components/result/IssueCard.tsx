@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { XCircle, AlertTriangle, Info } from 'lucide-react';
 import type { AuditIssue } from '@/lib/types';
@@ -12,31 +13,31 @@ interface IssueCardProps {
 const SEVERITY_CONFIG = {
   error: {
     Icon: XCircle,
-    iconColor: '#f87171',
+    iconColor: '#DC2626',
     iconBg: 'rgba(239,68,68,0.1)',
-    textColor: '#f87171',
+    textColor: '#DC2626',
     badgeClass: 'badge-red',
     label: '严重',
   },
   warning: {
     Icon: AlertTriangle,
-    iconColor: '#fbbf24',
+    iconColor: '#D97706',
     iconBg: 'rgba(245,158,11,0.1)',
-    textColor: '#fbbf24',
+    textColor: '#D97706',
     badgeClass: 'badge-amber',
     label: '警告',
   },
   info: {
     Icon: Info,
-    iconColor: '#60a5fa',
+    iconColor: '#0D9488',
     iconBg: 'rgba(59,130,246,0.1)',
-    textColor: '#60a5fa',
+    textColor: '#0D9488',
     badgeClass: 'badge-blue',
     label: '提示',
   },
 } as const;
 
-export default function IssueCard({ issue, index }: IssueCardProps) {
+export default memo(function IssueCard({ issue, index }: IssueCardProps) {
   const config = SEVERITY_CONFIG[issue.severity];
   const { Icon } = config;
 
@@ -64,7 +65,7 @@ export default function IssueCard({ issue, index }: IssueCardProps) {
             {issue.message}
           </p>
           {issue.detail && (
-            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
               {issue.detail}
             </p>
           )}
@@ -78,4 +79,4 @@ export default function IssueCard({ issue, index }: IssueCardProps) {
       </div>
     </motion.div>
   );
-}
+});

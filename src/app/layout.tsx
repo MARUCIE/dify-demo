@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" data-theme="dark">
       <body className="antialiased">
         <a href="#main-content" className="skip-to-content">跳转到主要内容</a>
         {children}

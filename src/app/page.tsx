@@ -1,6 +1,7 @@
 'use client';
 
 import { useReducer, useCallback, useRef, useEffect, useTransition } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, LazyMotion, m, MotionConfig, domAnimation } from 'framer-motion';
 import {
   FileText, CheckCircle, AlertTriangle, XCircle, X,
@@ -9,15 +10,17 @@ import type {
   StepState, AuditResult, AppPhase, BatchFile, BatchSummary,
 } from '@/lib/types';
 import { WORKFLOW_STEPS, TOTAL_STEPS } from '@/lib/constants';
-import { MOCK_BATCH_RESULTS, MOCK_STEP_DELAYS } from '@/lib/mock-data';
+import { phaseVariants, phaseTransition, EASE_DEFAULT } from '@/lib/animations';
 import AnimatedBackground from '@/components/layout/AnimatedBackground';
 import Header from '@/components/layout/Header';
 import StatsBar from '@/components/layout/StatsBar';
 import UploadZone from '@/components/upload/UploadZone';
 import WorkflowPipeline from '@/components/workflow/WorkflowPipeline';
 import BatchProgress from '@/components/batch/BatchProgress';
-import BatchResultsDashboard from '@/components/batch/BatchResultsDashboard';
-import ResultPanel from '@/components/result/ResultPanel';
+
+// M1: Dynamic imports for later-phase components (code splitting)
+const BatchResultsDashboard = dynamic(() => import('@/components/batch/BatchResultsDashboard'));
+const ResultPanel = dynamic(() => import('@/components/result/ResultPanel'));
 
 // -- Helpers --
 
@@ -214,22 +217,13 @@ function reducer(state: AppState, action: AppAction): AppState {
   }
 }
 
-// -- Phase transition animations --
-
-const phaseVariants = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
-
-const phaseTransition = { duration: 0.35, ease: [0.4, 0, 0.2, 1] as const };
-
 // -- Component --
 
 export default function Home() {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [, startTransition] = useTransition(); // H1: non-blocking phase transitions
   const runningRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // File handlers
   const handleFilesAdd = useCallback((files: File[]) => {
@@ -240,49 +234,128 @@ export default function Home() {
     dispatch({ type: 'REMOVE_FILE', id });
   }, []);
 
-  // Batch audit runner (mock)
-  const handleStartAudit = useCallback(async () => {
+  // Batch audit runner — calls /api/audit SSE endpoint per file
+  const handleStartAudit = useCallback(async (auditDate: string) => {
     if (runningRef.current) return;
     runningRef.current = true;
 
     dispatch({ type: 'START_BATCH' });
-    await sleep(600);
+    await sleep(300);
 
-    // Process files sequentially
     const filesCopy = [...state.files];
     for (let fi = 0; fi < filesCopy.length; fi++) {
-      const file = filesCopy[fi];
-      dispatch({ type: 'FILE_START', fileId: file.id });
+      const batchFile = filesCopy[fi];
+      dispatch({ type: 'FILE_START', fileId: batchFile.id });
       await sleep(200);
 
       const fileStart = performance.now();
+      const abortController = new AbortController();
+      abortRef.current = abortController;
 
-      for (const step of WORKFLOW_STEPS) {
-        const now = performance.now();
-        dispatch({ type: 'STEP_ACTIVE', fileId: file.id, stepId: step.id, now });
+      try {
+        const formData = new FormData();
+        formData.append('file', batchFile.file);
+        formData.append('auditDate', auditDate);
+        formData.append('fileIndex', String(fi));
 
-        // Randomize delay for natural feel
-        const baseDelay = MOCK_STEP_DELAYS[step.id - 1];
-        const jitter = 0.6 + Math.random() * 0.8;
-        await sleep(baseDelay * jitter);
+        const response = await fetch('/api/audit', {
+          method: 'POST',
+          body: formData,
+          signal: abortController.signal,
+        });
 
-        dispatch({ type: 'STEP_COMPLETED', fileId: file.id, stepId: step.id, now: performance.now() });
-        await sleep(60);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ error: 'Request failed' }));
+          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: errData.error || `HTTP ${response.status}` });
+          continue;
+        }
+
+        if (!response.body) {
+          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No response stream' });
+          continue;
+        }
+
+        // Parse SSE stream from /api/audit
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let currentEvent = '';
+        let fileResult: AuditResult | null = null;
+        let hadError = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith('data: ') && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                switch (currentEvent) {
+                  case 'step_start':
+                    dispatch({
+                      type: 'STEP_ACTIVE',
+                      fileId: batchFile.id,
+                      stepId: data.stepId,
+                      now: performance.now(),
+                    });
+                    break;
+                  case 'step_done':
+                    dispatch({
+                      type: 'STEP_COMPLETED',
+                      fileId: batchFile.id,
+                      stepId: data.stepId,
+                      now: performance.now(),
+                    });
+                    break;
+                  case 'result':
+                    fileResult = data as AuditResult;
+                    break;
+                  case 'error':
+                    hadError = true;
+                    dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: data.message });
+                    break;
+                }
+              } catch {
+                // Skip malformed SSE data
+              }
+              currentEvent = '';
+            }
+          }
+        }
+
+        const fileDuration = (performance.now() - fileStart) / 1000;
+        if (fileResult) {
+          dispatch({
+            type: 'FILE_COMPLETED',
+            fileId: batchFile.id,
+            result: { ...fileResult, totalDuration: fileDuration },
+          });
+        } else if (!hadError) {
+          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No result received' });
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') break;
+        dispatch({
+          type: 'FILE_ERROR',
+          fileId: batchFile.id,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        });
       }
 
-      const fileDuration = (performance.now() - fileStart) / 1000;
-      const mockResult = MOCK_BATCH_RESULTS[fi % MOCK_BATCH_RESULTS.length];
-      dispatch({
-        type: 'FILE_COMPLETED',
-        fileId: file.id,
-        result: { ...mockResult, totalDuration: fileDuration },
-      });
-
-      await sleep(400);
+      await sleep(300);
     }
 
     startTransition(() => dispatch({ type: 'BATCH_DONE' }));
     runningRef.current = false;
+    abortRef.current = null;
   }, [state.files, startTransition]);
 
   // Detail view — H1: wrapped in startTransition for non-blocking phase change
@@ -294,8 +367,10 @@ export default function Home() {
     startTransition(() => dispatch({ type: 'CLOSE_DETAIL' }));
   }, [startTransition]);
 
-  // Reset — H1: wrapped in startTransition
+  // Reset — abort any running request + H1: wrapped in startTransition
   const handleReset = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     runningRef.current = false;
     startTransition(() => dispatch({ type: 'RESET' }));
   }, [startTransition]);
@@ -371,7 +446,7 @@ export default function Home() {
         </div>
 
         {/* Phase content - fills remaining space */}
-        <div id="main-content" className="flex-1 min-h-0 px-8 pb-4 flex flex-col">
+        <main id="main-content" className="flex-1 min-h-0 px-8 pb-4 flex flex-col">
           <AnimatePresence mode="wait">
             {/* ======== PHASE 1: UPLOAD ======== */}
             {state.phase === 'upload' && (
@@ -411,11 +486,11 @@ export default function Home() {
                 {/* Collapsed upload summary bar */}
                 <div
                   className="glass rounded-xl px-5 py-3 mb-4 shrink-0"
-                  style={{ borderLeft: '3px solid #3b82f6' }}
+                  style={{ borderLeft: '3px solid #0D9488' }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <FileText size={16} color="#60a5fa" strokeWidth={2} />
+                      <FileText size={16} color="#0D9488" strokeWidth={2} />
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {state.files.length} 个文件
                       </span>
@@ -429,7 +504,7 @@ export default function Home() {
                       </div>
                       <span
                         className="stat-number text-glow-blue"
-                        style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa' }}
+                        style={{ fontSize: 16, fontWeight: 700, color: '#0D9488' }}
                       >
                         {progressPercent}%
                       </span>
@@ -480,7 +555,7 @@ export default function Home() {
               </m.div>
             )}
           </AnimatePresence>
-        </div>
+        </main>
 
         {/* Footer - only in upload phase */}
         {state.phase === 'upload' && (
@@ -489,7 +564,7 @@ export default function Home() {
             style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.8 }}
           >
             <span>路桥报销审核智能体 v2.0 -- Dify Workflow Demo</span>
-            <span style={{ margin: '0 8px', color: '#334155' }}>|</span>
+            <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>|</span>
             <span>Maurice | maurice_wen@proton.me</span>
           </div>
         )}
@@ -511,7 +586,7 @@ export default function Home() {
             {/* Backdrop */}
             <m.div
               className="absolute inset-0"
-              style={{ background: 'rgba(2,6,23,0.85)', backdropFilter: 'blur(8px)' }}
+              style={{ background: 'var(--overlay-bg, rgba(2,6,23,0.85))', backdropFilter: 'blur(8px)' }}
               onClick={handleCloseDetail}
               aria-hidden="true"
             />
@@ -522,7 +597,7 @@ export default function Home() {
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.3, ease: EASE_DEFAULT }}
             >
               {/* Close button */}
               <button
@@ -531,8 +606,8 @@ export default function Home() {
                 aria-label="关闭详情"
                 type="button"
                 style={{
-                  background: 'rgba(30,41,59,0.8)',
-                  border: '1px solid rgba(71,85,105,0.3)',
+                  background: 'var(--glass-bg)',
+                  border: '1px solid var(--glass-border)',
                   color: 'var(--text-secondary)',
                   cursor: 'pointer',
                 }}
@@ -543,10 +618,10 @@ export default function Home() {
               {/* File name header */}
               <div
                 className="glass-bright rounded-t-2xl px-8 py-4"
-                style={{ borderBottom: '1px solid rgba(59,130,246,0.1)' }}
+                style={{ borderBottom: '1px solid rgba(13,148,136,0.1)' }}
               >
                 <div className="flex items-center gap-3">
-                  <FileText size={18} color="#60a5fa" strokeWidth={2} />
+                  <FileText size={18} color="#0D9488" strokeWidth={2} />
                   <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
                     {detailFile.name}
                   </span>

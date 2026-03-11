@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   CheckCircle, AlertTriangle, XCircle, FileText,
@@ -8,8 +8,10 @@ import {
   Clock, Zap, Search, ArrowUpDown,
   ChevronUp, ChevronDown, Check,
 } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { BatchFile, BatchSummary, AuditSuggestion } from '@/lib/types';
 import { SUGGESTION_BADGE } from '@/lib/constants';
+import { DURATION, EASE_DEFAULT } from '@/lib/animations';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -74,7 +76,7 @@ const SUMMARY_CARDS: SummaryCardDef[] = [
   {
     label: '通过',
     key: 'passed',
-    color: '#4ade80',
+    color: '#059669',
     glowClass: 'glow-green',
     gradientFrom: 'rgba(34,197,94,0.15)',
     gradientTo: 'rgba(34,197,94,0.03)',
@@ -83,7 +85,7 @@ const SUMMARY_CARDS: SummaryCardDef[] = [
   {
     label: '人工复核',
     key: 'needsReview',
-    color: '#fbbf24',
+    color: '#D97706',
     glowClass: 'glow-amber',
     gradientFrom: 'rgba(245,158,11,0.15)',
     gradientTo: 'rgba(245,158,11,0.03)',
@@ -92,7 +94,7 @@ const SUMMARY_CARDS: SummaryCardDef[] = [
   {
     label: '不通过',
     key: 'rejected',
-    color: '#f87171',
+    color: '#DC2626',
     glowClass: 'glow-red',
     gradientFrom: 'rgba(239,68,68,0.15)',
     gradientTo: 'rgba(239,68,68,0.03)',
@@ -229,7 +231,7 @@ export default function BatchResultsDashboard({
     <motion.section
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] as const }}
+      transition={{ duration: DURATION.slower, ease: EASE_DEFAULT }}
     >
       {/* ── Section header ── */}
       <div className="flex items-center justify-between mb-3">
@@ -273,7 +275,7 @@ export default function BatchResultsDashboard({
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 16,
             padding: '24px 32px',
-            borderBottom: '1px solid rgba(71,85,105,0.2)',
+            borderBottom: '1px solid rgba(13,148,136,0.2)',
           }}
         >
           {SUMMARY_CARDS.map((card, i) => (
@@ -294,107 +296,62 @@ export default function BatchResultsDashboard({
             gridTemplateColumns: 'repeat(4, 1fr)',
             gap: 16,
             padding: '16px 32px',
-            borderBottom: '1px solid rgba(71,85,105,0.2)',
-            background: 'rgba(15,23,42,0.3)',
+            borderBottom: '1px solid rgba(13,148,136,0.2)',
+            background: 'rgba(13,148,136,0.03)',
           }}
         >
           <StatCell
-            icon={<FileText size={14} color="#60a5fa" strokeWidth={2} />}
+            icon={<FileText size={14} color="#0D9488" strokeWidth={2} />}
             label="总文件数"
             value={summary.totalFiles}
             suffix="个"
-            color="#60a5fa"
+            color="#0D9488"
             index={0}
           />
           <StatCell
-            icon={<Clock size={14} color="#c084fc" strokeWidth={2} />}
+            icon={<Clock size={14} color="#0891B2" strokeWidth={2} />}
             label="总耗时"
             value={parseFloat(summary.totalDuration.toFixed(1))}
             suffix="秒"
-            color="#c084fc"
+            color="#0891B2"
             decimals={1}
             index={1}
           />
           <StatCell
-            icon={<Zap size={14} color="#fbbf24" strokeWidth={2} />}
+            icon={<Zap size={14} color="#D97706" strokeWidth={2} />}
             label="平均耗时/文件"
             value={parseFloat(avgDuration.toFixed(1))}
             suffix="秒"
-            color="#fbbf24"
+            color="#D97706"
             decimals={1}
             index={2}
           />
           <StatCell
-            icon={<Search size={14} color="#f87171" strokeWidth={2} />}
+            icon={<Search size={14} color="#DC2626" strokeWidth={2} />}
             label="发现问题数"
             value={totalIssues}
             suffix="个"
-            color="#f87171"
+            color="#DC2626"
             index={3}
           />
         </div>
 
         {/* ── Results table ── */}
-        <div style={{ padding: '24px 32px' }}>
-          <p
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              marginBottom: 16,
-            }}
-          >
-            审核明细
-          </p>
-
-          {/* Table header */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '48px 1fr 90px 110px 100px 80px 90px',
-              gap: 12,
-              padding: '10px 16px',
-              borderRadius: 8,
-              background: 'rgba(15,23,42,0.4)',
-              marginBottom: 8,
-            }}
-          >
-            <SortableHeader label="序号" field="index" current={sortField} dir={sortDir} onSort={handleSort} />
-            <SortableHeader label="文件名" field="name" current={sortField} dir={sortDir} onSort={handleSort} />
-            <SortableHeader label="手写比例" field="handwritingRatio" current={sortField} dir={sortDir} onSort={handleSort} />
-            <SortableHeader label="招待类型" field="receptionType" current={sortField} dir={sortDir} onSort={handleSort} />
-            <SortableHeader label="审核建议" field="suggestion" current={sortField} dir={sortDir} onSort={handleSort} />
-            <SortableHeader label="问题数" field="issueCount" current={sortField} dir={sortDir} onSort={handleSort} />
-            <span
-              style={{
-                fontSize: 11,
-                color: 'var(--text-secondary)',
-                fontWeight: 600,
-                textAlign: 'center',
-              }}
-            >
-              操作
-            </span>
-          </div>
-
-          {/* Table rows */}
-          {sortedFiles.map((file, i) => (
-            <ResultRow
-              key={file.id}
-              file={file}
-              displayIndex={files.indexOf(file)}
-              animIndex={i}
-              onViewDetail={onViewDetail}
-            />
-          ))}
-        </div>
+        <ResultsTable
+          sortedFiles={sortedFiles}
+          allFiles={files}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={handleSort}
+          onViewDetail={onViewDetail}
+        />
 
         {/* ── Bottom action bar ── */}
         <div
           className="flex items-center justify-between"
           style={{
             padding: '20px 32px',
-            borderTop: '1px solid rgba(71,85,105,0.2)',
+            borderTop: '1px solid rgba(13,148,136,0.2)',
           }}
         >
           <div className="flex gap-3">
@@ -422,6 +379,122 @@ export default function BatchResultsDashboard({
 }
 
 // ---------------------------------------------------------------------------
+// Results table with virtual scrolling for 100+ files
+// ---------------------------------------------------------------------------
+
+const ROW_HEIGHT = 48; // Fixed row height for virtualizer
+const VISIBLE_ROWS = 10; // Show ~10 rows before scrolling
+
+interface ResultsTableProps {
+  sortedFiles: BatchFile[];
+  allFiles: BatchFile[];
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+  onViewDetail: (fileId: string) => void;
+}
+
+function ResultsTable({ sortedFiles, allFiles, sortField, sortDir, onSort, onViewDetail }: ResultsTableProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: sortedFiles.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 5,
+  });
+
+  const needsScroll = sortedFiles.length > VISIBLE_ROWS;
+
+  return (
+    <div style={{ padding: '24px 32px' }}>
+      <p
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 16,
+        }}
+      >
+        审核明细
+      </p>
+
+      {/* Table header */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '48px 1fr 90px 110px 100px 80px 90px',
+          gap: 12,
+          padding: '10px 16px',
+          borderRadius: 8,
+          background: 'rgba(13,148,136,0.04)',
+          marginBottom: 8,
+        }}
+      >
+        <SortableHeader label="序号" field="index" current={sortField} dir={sortDir} onSort={onSort} />
+        <SortableHeader label="文件名" field="name" current={sortField} dir={sortDir} onSort={onSort} />
+        <SortableHeader label="手写比例" field="handwritingRatio" current={sortField} dir={sortDir} onSort={onSort} />
+        <SortableHeader label="招待类型" field="receptionType" current={sortField} dir={sortDir} onSort={onSort} />
+        <SortableHeader label="审核建议" field="suggestion" current={sortField} dir={sortDir} onSort={onSort} />
+        <SortableHeader label="问题数" field="issueCount" current={sortField} dir={sortDir} onSort={onSort} />
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--text-secondary)',
+            fontWeight: 600,
+            textAlign: 'center',
+          }}
+        >
+          操作
+        </span>
+      </div>
+
+      {/* Virtualized table rows */}
+      <div
+        ref={scrollRef}
+        style={{
+          maxHeight: needsScroll ? ROW_HEIGHT * VISIBLE_ROWS : undefined,
+          overflowY: needsScroll ? 'auto' : undefined,
+          borderRadius: 8,
+        }}
+      >
+        <div
+          style={{
+            height: virtualizer.getTotalSize(),
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const file = sortedFiles[virtualRow.index];
+            return (
+              <div
+                key={file.id}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: virtualRow.size,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <ResultRow
+                  file={file}
+                  displayIndex={allFiles.indexOf(file)}
+                  animIndex={virtualRow.index}
+                  onViewDetail={onViewDetail}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Summary card (with gradient background + animated counter)
 // ---------------------------------------------------------------------------
 
@@ -445,7 +518,7 @@ function SummaryCard({ def, value, total, index }: SummaryCardProps) {
       className={`glass rounded-xl ${def.glowClass}`}
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.6, delay: index * 0.12 }}
+      transition={{ duration: DURATION.slow, delay: index * 0.12 }}
       style={{
         padding: '24px 20px',
         background: `linear-gradient(145deg, ${def.gradientFrom}, ${def.gradientTo})`,
@@ -602,7 +675,7 @@ function SortableHeader({ label, field, current, dir, onSort }: SortableHeaderPr
       aria-label={`${label}, ${isActive ? (dir === 'asc' ? '升序' : '降序') : '点击排序'}`}
       style={{
         fontSize: 11,
-        color: isActive ? '#e2e8f0' : '#94a3b8',
+        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
         fontWeight: 600,
         background: 'none',
         border: 'none',
@@ -652,7 +725,8 @@ function ResultRow({ file, displayIndex, animIndex, onViewDetail }: ResultRowPro
         display: 'grid',
         gridTemplateColumns: '48px 1fr 90px 110px 100px 80px 90px',
         gap: 12,
-        padding: '12px 16px',
+        padding: '10px 16px',
+        height: ROW_HEIGHT - 4,
         marginBottom: 4,
         alignItems: 'center',
         cursor: 'pointer',
@@ -678,7 +752,7 @@ function ResultRow({ file, displayIndex, animIndex, onViewDetail }: ResultRowPro
 
       {/* File name */}
       <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
-        <FileText size={14} color="#94a3b8" strokeWidth={2} className="shrink-0" />
+        <FileText size={14} color="var(--text-muted)" strokeWidth={2} className="shrink-0" />
         <span
           style={{
             fontSize: 13,
@@ -723,7 +797,7 @@ function ResultRow({ file, displayIndex, animIndex, onViewDetail }: ResultRowPro
         style={{
           fontSize: 13,
           fontWeight: 600,
-          color: issueCount > 0 ? '#f87171' : '#4ade80',
+          color: issueCount > 0 ? '#DC2626' : '#059669',
           textAlign: 'right',
         }}
       >

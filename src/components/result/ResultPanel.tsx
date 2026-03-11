@@ -4,8 +4,10 @@ import { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileCheck, Users, AlertTriangle, Copy, Download, RotateCcw, CheckCircle, XCircle, Check,
+  Scissors, FileText,
 } from 'lucide-react';
 import type { AuditResult } from '@/lib/types';
+import { EASE_DEFAULT, DURATION } from '@/lib/animations';
 import IssueCard from './IssueCard';
 
 interface ResultPanelProps {
@@ -18,9 +20,18 @@ function formatResultText(result: AuditResult): string {
     `招待类型: ${result.receptionType}`,
     `审核建议: ${result.suggestion}`,
     `审核耗时: ${result.totalDuration.toFixed(1)}秒`,
-    `发现问题: ${result.issues.length} 个`,
-    '',
   ];
+  if (result.amount) lines.push(`报销金额: ${result.amount}元`);
+  if (result.subDocuments) {
+    lines.push('');
+    lines.push('--- 单据识别 ---');
+    const found = result.subDocuments.filter(d => d.found);
+    const missing = result.subDocuments.filter(d => !d.found);
+    found.forEach(d => lines.push(`  [有] ${d.type}${d.page ? ` (P${d.page})` : ''}`));
+    missing.forEach(d => lines.push(`  [缺] ${d.type}`));
+  }
+  lines.push('');
+  lines.push(`发现问题: ${result.issues.length} 个`);
   result.issues.forEach((issue, i) => {
     const severity = issue.severity === 'error' ? '[严重]' : issue.severity === 'warning' ? '[警告]' : '[信息]';
     lines.push(`${i + 1}. ${severity} ${issue.message}`);
@@ -63,7 +74,7 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
     <motion.section
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: DURATION.slower, ease: EASE_DEFAULT }}
     >
       {/* Section header */}
       <div className="flex items-center gap-3 mb-6">
@@ -113,7 +124,7 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
                 style={{
                   width: 1,
                   height: 40,
-                  background: 'rgba(71,85,105,0.3)',
+                  background: 'rgba(13,148,136,0.3)',
                 }}
               />
               <div>
@@ -128,6 +139,25 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
                   {result.suggestion}
                 </span>
               </div>
+              {result.amount && (
+                <>
+                  <div
+                    style={{
+                      width: 1,
+                      height: 40,
+                      background: 'rgba(13,148,136,0.3)',
+                    }}
+                  />
+                  <div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      报销金额
+                    </p>
+                    <p className="stat-number" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      ¥{result.amount.toLocaleString()}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             <div className="text-right">
               <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>审核耗时</p>
@@ -142,12 +172,94 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
           </div>
         </div>
 
+        {/* Sub-document breakdown */}
+        {result.subDocuments && result.subDocuments.length > 0 && (
+          <div
+            style={{
+              padding: '20px 32px',
+              borderBottom: '1px solid rgba(13,148,136,0.1)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Scissors size={14} color="#0D9488" strokeWidth={2} />
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                单据拆分识别
+              </p>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 4 }}>
+                {result.subDocuments.filter(d => d.found).length}/{result.subDocuments.length} 份单据
+                {result.pageCount ? ` · ${result.pageCount}页` : ''}
+              </span>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: 8,
+              }}
+            >
+              {result.subDocuments.map((doc, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                  className="glass rounded-lg"
+                  style={{
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    border: `1px solid ${doc.found ? 'rgba(5,150,105,0.2)' : 'rgba(220,38,38,0.2)'}`,
+                    background: doc.found ? 'rgba(5,150,105,0.04)' : 'rgba(220,38,38,0.04)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 7,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: doc.found ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {doc.found
+                      ? <CheckCircle size={14} color="#059669" strokeWidth={2} />
+                      : <XCircle size={14} color="#DC2626" strokeWidth={2} />
+                    }
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: doc.found ? 'var(--text-primary)' : '#DC2626',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {doc.type}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {doc.found
+                        ? `P${doc.page}${doc.pageCount && doc.pageCount > 1 ? `-${doc.page! + doc.pageCount - 1}` : ''}`
+                        : '缺失'
+                      }
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Issues list */}
         <div style={{ padding: '24px 32px' }}>
           <div className="flex items-center justify-between mb-5">
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
               发现{' '}
-              <span style={{ color: '#f87171' }}>{result.issues.length}</span>{' '}
+              <span style={{ color: '#DC2626' }}>{result.issues.length}</span>{' '}
               个问题
             </p>
             <div className="flex gap-2">
@@ -173,7 +285,7 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
           {/* Action bar */}
           <div
             className="flex items-center justify-between mt-8 pt-6"
-            style={{ borderTop: '1px solid rgba(71,85,105,0.2)' }}
+            style={{ borderTop: '1px solid rgba(13,148,136,0.2)' }}
           >
             <div className="flex gap-3">
               <button className="btn-secondary" onClick={handleCopy}>
