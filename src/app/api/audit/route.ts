@@ -3,6 +3,7 @@ import {
   uploadFileToDify,
   runWorkflowStream,
   parseDifyOutput,
+  enrichResult,
   SKIP_NODE_TYPES,
 } from '@/lib/dify-client';
 import { MOCK_BATCH_RESULTS, MOCK_STEP_DELAYS } from '@/lib/mock-data';
@@ -43,7 +44,7 @@ async function* mockStream(fileIndex: number): AsyncGenerator<string> {
     await delay(60);
   }
 
-  const mockResult = MOCK_BATCH_RESULTS[fileIndex % MOCK_BATCH_RESULTS.length];
+  const mockResult = enrichResult({ ...MOCK_BATCH_RESULTS[fileIndex % MOCK_BATCH_RESULTS.length] });
   yield sseEvent('result', mockResult);
   yield sseEvent('done', {});
 }

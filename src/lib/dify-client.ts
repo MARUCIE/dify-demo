@@ -1,4 +1,5 @@
 import type { AuditResult, AuditIssue, AuditSuggestion, SubDocument } from './types';
+import { deriveSubDocumentsFromIssues, generatePerFileSummary } from './sub-doc-analysis';
 import { spawn } from 'child_process';
 import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -157,6 +158,18 @@ export async function runWorkflowStream(
   return res;
 }
 
+// Ensure result always has subDocuments (derive from issues if Dify API didn't return them)
+// and always has an aiSummary.
+export function enrichResult(result: AuditResult): AuditResult {
+  if ((!result.subDocuments || result.subDocuments.length === 0) && result.issues.length > 0) {
+    result.subDocuments = deriveSubDocumentsFromIssues(result.issues);
+  }
+  if (!result.aiSummary) {
+    result.aiSummary = generatePerFileSummary(result);
+  }
+  return result;
+}
+
 // Parse Dify workflow outputs into AuditResult
 export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
   const raw = outputs.text ?? outputs.result ?? outputs.output ?? outputs.answer ?? '';
@@ -165,15 +178,18 @@ export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
   if (typeof raw === 'object' && raw !== null) {
     const obj = raw as Record<string, unknown>;
     if (obj.suggestion || obj.receptionType || obj.issues) {
-      return {
+      return enrichResult({
         receptionType: String(obj.receptionType || obj.reception_type || '公务接待'),
         suggestion: normalizeSuggestion(obj.suggestion),
         issues: normalizeIssues(obj.issues),
         subDocuments: normalizeSubDocuments(obj.subDocuments || obj.sub_documents || obj.documents),
         amount: typeof obj.amount === 'number' ? obj.amount : undefined,
         pageCount: typeof obj.pageCount === 'number' ? obj.pageCount : undefined,
+        aiSummary: typeof obj.aiSummary === 'string' ? obj.aiSummary :
+                   typeof obj.summary === 'string' ? obj.summary :
+                   typeof obj.ai_summary === 'string' ? obj.ai_summary : undefined,
         totalDuration: 0,
-      };
+      });
     }
   }
 
@@ -182,27 +198,30 @@ export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object') {
-      return {
+      return enrichResult({
         receptionType: String(parsed.receptionType || parsed.reception_type || '公务接待'),
         suggestion: normalizeSuggestion(parsed.suggestion || parsed.result),
         issues: normalizeIssues(parsed.issues || parsed.problems || []),
         subDocuments: normalizeSubDocuments(parsed.subDocuments || parsed.sub_documents || parsed.documents),
         amount: typeof parsed.amount === 'number' ? parsed.amount : undefined,
         pageCount: typeof parsed.pageCount === 'number' ? parsed.pageCount : undefined,
+        aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary :
+                   typeof parsed.summary === 'string' ? parsed.summary :
+                   typeof parsed.ai_summary === 'string' ? parsed.ai_summary : undefined,
         totalDuration: 0,
-      };
+      });
     }
   } catch {
     // Not JSON — fall through to text extraction
   }
 
   // Fallback: extract from plain text
-  return {
+  return enrichResult({
     receptionType: text.includes('商务接待') ? '商务接待' : '公务接待',
     suggestion: extractSuggestion(text),
     issues: extractIssuesFromText(text),
     totalDuration: 0,
-  };
+  });
 }
 
 function normalizeSuggestion(s: unknown): AuditSuggestion {

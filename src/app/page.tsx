@@ -1,645 +1,950 @@
 'use client';
 
-import { useReducer, useCallback, useRef, useEffect, useTransition } from 'react';
-import dynamic from 'next/dynamic';
-import { AnimatePresence, LazyMotion, m, MotionConfig, domAnimation } from 'framer-motion';
+import * as React from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FileText, CheckCircle, AlertTriangle, XCircle, X,
+  Sparkles, Search, ArrowRight, Star, ChevronRight,
+  X, Play, Zap, Bot,
 } from 'lucide-react';
-import type {
-  StepState, AuditResult, AppPhase, BatchFile, BatchSummary,
-} from '@/lib/types';
-import { WORKFLOW_STEPS, TOTAL_STEPS } from '@/lib/constants';
-import { phaseVariants, phaseTransition, EASE_DEFAULT } from '@/lib/animations';
-import AnimatedBackground from '@/components/layout/AnimatedBackground';
-import Header from '@/components/layout/Header';
-import StatsBar from '@/components/layout/StatsBar';
-import UploadZone from '@/components/upload/UploadZone';
-import WorkflowPipeline from '@/components/workflow/WorkflowPipeline';
-import BatchProgress from '@/components/batch/BatchProgress';
+import { PLATFORM_AGENTS } from '@/lib/agents';
+import type { AgentDef } from '@/lib/agents';
 
-// M1: Dynamic imports for later-phase components (code splitting)
-const BatchResultsDashboard = dynamic(() => import('@/components/batch/BatchResultsDashboard'));
-const ResultPanel = dynamic(() => import('@/components/result/ResultPanel'));
+// -- Constants --
 
-// -- Helpers --
+const BLUE = '#0284C7';
+const BLUE_DARK = '#0369A1';
+const BLUE_LIGHT = '#0EA5E9';
+const TEAL = '#0D9488';
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// -- Agent Categories --
 
-function initStepStates(): StepState[] {
-  return WORKFLOW_STEPS.map(s => ({ stepId: s.id, status: 'idle' as const }));
-}
+const AGENT_CATEGORIES = [
+  { id: 'all', label: '全部', icon: Sparkles },
+  { id: 'audit', label: '合规审核', icon: Sparkles },
+  { id: 'content', label: '内容生产', icon: Sparkles },
+  { id: 'data', label: '数据分析', icon: Sparkles },
+  { id: 'research', label: '调研洞察', icon: Search },
+];
 
-let fileIdCounter = 0;
-function nextFileId(): string {
-  return `f-${++fileIdCounter}-${Date.now()}`;
-}
-
-// Mock metadata for demo
-function randomPages(): number {
-  return Math.floor(Math.random() * 10) + 3;
-}
-function randomHandwritingRatio(): number {
-  const r = Math.random();
-  // Bias towards low and high values for variety
-  if (r < 0.3) return Math.random() * 0.15;
-  if (r > 0.7) return 0.5 + Math.random() * 0.3;
-  return 0.15 + Math.random() * 0.35;
-}
-
-function createBatchFile(file: File): BatchFile {
-  return {
-    id: nextFileId(),
-    file,
-    name: file.name,
-    size: file.size,
-    pages: randomPages(),
-    handwritingRatio: randomHandwritingRatio(),
-    status: 'queued',
-    currentStep: 0,
-    stepStates: initStepStates(),
-    result: null,
-    error: null,
-  };
-}
-
-function computeSummary(files: BatchFile[]): BatchSummary {
-  const completed = files.filter(f => f.status === 'completed');
-  return {
-    totalFiles: files.length,
-    completed: completed.length,
-    passed: completed.filter(f => f.result?.suggestion === '通过').length,
-    needsReview: completed.filter(f => f.result?.suggestion === '人工复核').length,
-    rejected: completed.filter(f => f.result?.suggestion === '不通过').length,
-    totalDuration: completed.reduce((sum, f) => sum + (f.result?.totalDuration ?? 0), 0),
-  };
-}
-
-// -- State --
-
-interface AppState {
-  phase: AppPhase;
-  files: BatchFile[];
-  activeFileId: string | null;
-  detailFileId: string | null;
-  batchStartTime: number;
-}
-
-type AppAction =
-  | { type: 'ADD_FILES'; newFiles: File[] }
-  | { type: 'REMOVE_FILE'; id: string }
-  | { type: 'START_BATCH' }
-  | { type: 'FILE_START'; fileId: string }
-  | { type: 'STEP_ACTIVE'; fileId: string; stepId: number; now: number }
-  | { type: 'STEP_COMPLETED'; fileId: string; stepId: number; now: number }
-  | { type: 'FILE_COMPLETED'; fileId: string; result: AuditResult }
-  | { type: 'FILE_ERROR'; fileId: string; error: string }
-  | { type: 'BATCH_DONE' }
-  | { type: 'VIEW_DETAIL'; fileId: string }
-  | { type: 'CLOSE_DETAIL' }
-  | { type: 'RESET' };
-
-const INITIAL_STATE: AppState = {
-  phase: 'upload',
-  files: [],
-  activeFileId: null,
-  detailFileId: null,
-  batchStartTime: 0,
+const AGENT_CATEGORY_MAP: Record<string, string> = {
+  'expense-audit': 'audit',
+  'contract': 'audit',
+  'meeting': 'content',
+  'deck': 'content',
+  'document': 'content',
+  'data': 'data',
+  'research': 'research',
+  'bidding': 'audit',
 };
 
-function updateFile(files: BatchFile[], fileId: string, updater: (f: BatchFile) => BatchFile): BatchFile[] {
-  return files.map(f => f.id === fileId ? updater(f) : f);
-}
+// -- Tier badge styling (light theme) --
 
-function reducer(state: AppState, action: AppAction): AppState {
-  switch (action.type) {
-    case 'ADD_FILES': {
-      const newBatchFiles = action.newFiles
-        .filter(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
-        .slice(0, 100 - state.files.length) // cap at 100
-        .map(createBatchFile);
-      return { ...state, files: [...state.files, ...newBatchFiles] };
-    }
-
-    case 'REMOVE_FILE':
-      return { ...state, files: state.files.filter(f => f.id !== action.id) };
-
-    case 'START_BATCH':
+function tierStyle(tier: AgentDef['tier']) {
+  switch (tier) {
+    case 'S':
       return {
-        ...state,
-        phase: 'running',
-        batchStartTime: performance.now(),
-        files: state.files.map(f => ({
-          ...f,
-          status: 'queued' as const,
-          currentStep: 0,
-          stepStates: initStepStates(),
-          result: null,
-          error: null,
-        })),
+        background: 'rgba(2, 132, 199, 0.1)',
+        color: BLUE,
+        border: '1px solid rgba(2, 132, 199, 0.2)',
       };
-
-    case 'FILE_START':
+    case 'A':
       return {
-        ...state,
-        activeFileId: action.fileId,
-        files: updateFile(state.files, action.fileId, f => ({
-          ...f,
-          status: 'processing',
-          currentStep: 0,
-        })),
+        background: 'rgba(100, 116, 139, 0.08)',
+        color: '#64748b',
+        border: '1px solid rgba(100, 116, 139, 0.15)',
       };
-
-    case 'STEP_ACTIVE':
+    case 'B':
       return {
-        ...state,
-        files: updateFile(state.files, action.fileId, f => ({
-          ...f,
-          currentStep: action.stepId,
-          stepStates: f.stepStates.map(s =>
-            s.stepId === action.stepId
-              ? { ...s, status: 'active' as const, startedAt: action.now }
-              : s
-          ),
-        })),
+        background: 'rgba(100, 116, 139, 0.05)',
+        color: '#94a3b8',
+        border: '1px solid rgba(100, 116, 139, 0.1)',
       };
-
-    case 'STEP_COMPLETED':
-      return {
-        ...state,
-        files: updateFile(state.files, action.fileId, f => ({
-          ...f,
-          stepStates: f.stepStates.map(s =>
-            s.stepId === action.stepId
-              ? { ...s, status: 'completed' as const, completedAt: action.now }
-              : s
-          ),
-        })),
-      };
-
-    case 'FILE_COMPLETED':
-      return {
-        ...state,
-        files: updateFile(state.files, action.fileId, f => ({
-          ...f,
-          status: 'completed',
-          currentStep: TOTAL_STEPS,
-          result: action.result,
-        })),
-      };
-
-    case 'FILE_ERROR':
-      return {
-        ...state,
-        files: updateFile(state.files, action.fileId, f => ({
-          ...f,
-          status: 'error',
-          error: action.error,
-        })),
-      };
-
-    case 'BATCH_DONE':
-      return { ...state, phase: 'completed', activeFileId: null };
-
-    case 'VIEW_DETAIL':
-      return { ...state, phase: 'detail', detailFileId: action.fileId };
-
-    case 'CLOSE_DETAIL':
-      return { ...state, phase: 'completed', detailFileId: null };
-
-    case 'RESET':
-      return { ...INITIAL_STATE, files: [] };
-
-    default:
-      return state;
   }
 }
 
-// -- Component --
+// -- Featured Agent Card (horizontal scroll) --
 
-export default function Home() {
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
-  const [, startTransition] = useTransition(); // H1: non-blocking phase transitions
-  const runningRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
-
-  // File handlers
-  const handleFilesAdd = useCallback((files: File[]) => {
-    dispatch({ type: 'ADD_FILES', newFiles: files });
-  }, []);
-
-  const handleFileRemove = useCallback((id: string) => {
-    dispatch({ type: 'REMOVE_FILE', id });
-  }, []);
-
-  // Batch audit runner — calls /api/audit SSE endpoint per file
-  const handleStartAudit = useCallback(async (auditDate: string) => {
-    if (runningRef.current) return;
-    runningRef.current = true;
-
-    dispatch({ type: 'START_BATCH' });
-    await sleep(300);
-
-    const filesCopy = [...state.files];
-    for (let fi = 0; fi < filesCopy.length; fi++) {
-      const batchFile = filesCopy[fi];
-      dispatch({ type: 'FILE_START', fileId: batchFile.id });
-      await sleep(200);
-
-      const fileStart = performance.now();
-      const abortController = new AbortController();
-      abortRef.current = abortController;
-
-      try {
-        const formData = new FormData();
-        formData.append('file', batchFile.file);
-        formData.append('auditDate', auditDate);
-        formData.append('fileIndex', String(fi));
-
-        const response = await fetch('/api/audit', {
-          method: 'POST',
-          body: formData,
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({ error: 'Request failed' }));
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: errData.error || `HTTP ${response.status}` });
-          continue;
-        }
-
-        if (!response.body) {
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No response stream' });
-          continue;
-        }
-
-        // Parse SSE stream from /api/audit
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let currentEvent = '';
-        let fileResult: AuditResult | null = null;
-        let hadError = false;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              currentEvent = line.slice(7).trim();
-            } else if (line.startsWith('data: ') && currentEvent) {
-              try {
-                const data = JSON.parse(line.slice(6));
-
-                switch (currentEvent) {
-                  case 'step_start':
-                    dispatch({
-                      type: 'STEP_ACTIVE',
-                      fileId: batchFile.id,
-                      stepId: data.stepId,
-                      now: performance.now(),
-                    });
-                    break;
-                  case 'step_done':
-                    dispatch({
-                      type: 'STEP_COMPLETED',
-                      fileId: batchFile.id,
-                      stepId: data.stepId,
-                      now: performance.now(),
-                    });
-                    break;
-                  case 'result':
-                    fileResult = data as AuditResult;
-                    break;
-                  case 'error':
-                    hadError = true;
-                    dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: data.message });
-                    break;
-                }
-              } catch {
-                // Skip malformed SSE data
-              }
-              currentEvent = '';
-            }
-          }
-        }
-
-        const fileDuration = (performance.now() - fileStart) / 1000;
-        if (fileResult) {
-          dispatch({
-            type: 'FILE_COMPLETED',
-            fileId: batchFile.id,
-            result: { ...fileResult, totalDuration: fileDuration },
-          });
-        } else if (!hadError) {
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No result received' });
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') break;
-        dispatch({
-          type: 'FILE_ERROR',
-          fileId: batchFile.id,
-          error: err instanceof Error ? err.message : 'Unknown error',
-        });
-      }
-
-      await sleep(300);
-    }
-
-    startTransition(() => dispatch({ type: 'BATCH_DONE' }));
-    runningRef.current = false;
-    abortRef.current = null;
-  }, [state.files, startTransition]);
-
-  // Detail view — H1: wrapped in startTransition for non-blocking phase change
-  const handleViewDetail = useCallback((fileId: string) => {
-    startTransition(() => dispatch({ type: 'VIEW_DETAIL', fileId }));
-  }, [startTransition]);
-
-  const handleCloseDetail = useCallback(() => {
-    startTransition(() => dispatch({ type: 'CLOSE_DETAIL' }));
-  }, [startTransition]);
-
-  // Reset — abort any running request + H1: wrapped in startTransition
-  const handleReset = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    runningRef.current = false;
-    startTransition(() => dispatch({ type: 'RESET' }));
-  }, [startTransition]);
-
-  // Derived state
-  const activeFile = state.files.find(f => f.id === state.activeFileId);
-  const detailFile = state.files.find(f => f.id === state.detailFileId);
-  const summary = computeSummary(state.files);
-  const completedCount = state.files.filter(f => f.status === 'completed').length;
-  const progressPercent = state.files.length > 0
-    ? Math.round((completedCount / state.files.length) * 100)
-    : 0;
-
-  // C5: Escape key + focus trap for detail overlay
-  useEffect(() => {
-    if (state.phase !== 'detail') return;
-
-    const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
-    if (!dialog) return;
-
-    // Move focus into dialog
-    const closeBtn = dialog.querySelector('button') as HTMLElement | null;
-    closeBtn?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleCloseDetail();
-        return;
-      }
-      // Focus trap: cycle Tab within dialog
-      if (e.key === 'Tab') {
-        const focusable = dialog.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [state.phase, handleCloseDetail]);
-
-  // C6: Status text for ARIA live region
-  const ariaStatus = state.phase === 'running' && activeFile
-    ? `审核中: ${activeFile.name}, 步骤 ${activeFile.currentStep}/${TOTAL_STEPS}, 已完成 ${completedCount}/${state.files.length} 个文件`
-    : state.phase === 'completed'
-      ? `审核完成: ${completedCount} 个文件, 通过 ${summary.passed}, 人工复核 ${summary.needsReview}, 不通过 ${summary.rejected}`
-      : '';
+function FeaturedAgentCard({
+  agent,
+  onSelect,
+  index,
+}: {
+  agent: AgentDef;
+  onSelect: () => void;
+  index: number;
+}) {
+  const Icon = agent.icon;
 
   return (
-    <LazyMotion features={domAnimation}>
-    <MotionConfig reducedMotion="user">
-    <div className="h-screen flex flex-col overflow-hidden relative">
-      <AnimatedBackground />
+    <motion.button
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.05 }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      onClick={onSelect}
+      type="button"
+      style={{
+        flexShrink: 0,
+        width: 280,
+        overflow: 'hidden',
+        borderRadius: 16,
+        border: '1px solid rgba(226, 232, 240, 0.8)',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        padding: 20,
+        textAlign: 'left',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'all 0.3s ease',
+        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)',
+        color: 'inherit',
+      }}
+    >
+      {/* Hover gradient overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `linear-gradient(135deg, rgba(2, 132, 199, 0.04) 0%, transparent 60%)`,
+          pointerEvents: 'none',
+        }}
+      />
 
-      {/* C6: ARIA live region for screen readers */}
-      <div role="status" aria-live="polite" className="sr-only">
-        {ariaStatus}
-      </div>
-
-      <div className="relative z-10 flex flex-col h-full">
-        {/* Header - always visible, compact */}
-        <div className="shrink-0 px-8 pt-4">
-          <Header />
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* Top row: icon + badge */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              background: `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon size={24} color="white" strokeWidth={2} />
+          </div>
+          <span
+            style={{
+              ...tierStyle(agent.tier),
+              padding: '3px 10px',
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+            }}
+          >
+            {agent.tier}
+          </span>
         </div>
 
-        {/* Phase content - fills remaining space */}
-        <main id="main-content" className="flex-1 min-h-0 px-8 pb-4 flex flex-col">
-          <AnimatePresence mode="wait">
-            {/* ======== PHASE 1: UPLOAD ======== */}
-            {state.phase === 'upload' && (
-              <m.div
-                key="phase-upload"
-                className="flex-1 flex flex-col"
-                variants={phaseVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={phaseTransition}
-              >
-                <StatsBar />
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <UploadZone
-                    files={state.files}
-                    onFilesAdd={handleFilesAdd}
-                    onFileRemove={handleFileRemove}
-                    onStartAudit={handleStartAudit}
-                    disabled={false}
-                  />
-                </div>
-              </m.div>
-            )}
+        {/* Name */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginBottom: 2 }}>
+          {agent.name}
+        </h2>
+        <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+          {agent.nameEn}
+        </p>
 
-            {/* ======== PHASE 2: RUNNING ======== */}
-            {state.phase === 'running' && (
-              <m.div
-                key="phase-running"
-                className="flex-1 flex flex-col min-h-0"
-                variants={phaseVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={phaseTransition}
-              >
-                {/* Collapsed upload summary bar */}
-                <div
-                  className="glass rounded-xl px-5 py-3 mb-4 shrink-0"
-                  style={{ borderLeft: '3px solid #0D9488' }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileText size={16} color="#0D9488" strokeWidth={2} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {state.files.length} 个文件
-                      </span>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                        已完成 {completedCount}/{state.files.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="progress-bar" style={{ width: 160 }}>
-                        <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                      </div>
-                      <span
-                        className="stat-number text-glow-blue"
-                        style={{ fontSize: 16, fontWeight: 700, color: '#0D9488' }}
-                      >
-                        {progressPercent}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
+        {/* Description */}
+        <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6, marginBottom: 12 }}>
+          {agent.description}
+        </p>
 
-                {/* Split panels: Workflow + Batch Progress */}
-                <div className="flex-1 min-h-0 flex gap-4">
-                  {/* Left: Workflow Pipeline for active file */}
-                  <div className="flex-[3] min-h-0 overflow-auto">
-                    {activeFile && (
-                      <WorkflowPipeline
-                        steps={WORKFLOW_STEPS}
-                        stepStates={activeFile.stepStates}
-                      />
-                    )}
-                  </div>
+        {/* Bottom: status + arrow */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{
+            fontSize: 10,
+            color: agent.status === 'active' ? TEAL : '#94a3b8',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            {agent.status === 'active' ? 'ACTIVE' : 'COMING SOON'}
+          </span>
+          <ChevronRight size={16} color="#cbd5e1" strokeWidth={2} />
+        </div>
+      </div>
+    </motion.button>
+  );
+}
 
-                  {/* Right: Batch Progress */}
-                  <div className="flex-[2] min-h-0 overflow-auto">
-                    <BatchProgress
-                      files={state.files}
-                      steps={WORKFLOW_STEPS}
-                    />
-                  </div>
-                </div>
-              </m.div>
-            )}
+// -- Grid Agent Card --
 
-            {/* ======== PHASE 3: COMPLETED ======== */}
-            {(state.phase === 'completed' || state.phase === 'detail') && (
-              <m.div
-                key="phase-completed"
-                className="flex-1 min-h-0 overflow-auto"
-                variants={phaseVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={phaseTransition}
-              >
-                <BatchResultsDashboard
-                  files={state.files}
-                  summary={summary}
-                  onViewDetail={handleViewDetail}
-                  onReset={handleReset}
-                />
-              </m.div>
-            )}
-          </AnimatePresence>
-        </main>
+function AgentGridCard({
+  agent,
+  onSelect,
+}: {
+  agent: AgentDef;
+  onSelect: () => void;
+}) {
+  const Icon = agent.icon;
+  const isFeatured = agent.featured;
+  const isComingSoon = agent.status === 'coming-soon';
 
-        {/* Footer - only in upload phase */}
-        {state.phase === 'upload' && (
-          <div
-            className="shrink-0 text-center py-3 px-8"
-            style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.8 }}
+  return (
+    <motion.button
+      whileHover={!isComingSoon ? { y: -2, scale: 1.01 } : undefined}
+      onClick={onSelect}
+      type="button"
+      style={{
+        width: '100%',
+        overflow: 'hidden',
+        borderRadius: 16,
+        border: isFeatured
+          ? '1px solid rgba(2, 132, 199, 0.25)'
+          : '1px solid rgba(226, 232, 240, 0.8)',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        padding: 20,
+        textAlign: 'left',
+        cursor: isComingSoon ? 'default' : 'pointer',
+        position: 'relative',
+        transition: 'all 0.3s ease',
+        boxShadow: isFeatured
+          ? '0 4px 24px rgba(2, 132, 199, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)'
+          : '0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03)',
+        opacity: isComingSoon ? 0.5 : 1,
+        color: 'inherit',
+      }}
+    >
+      {/* Featured glow overlay */}
+      {isFeatured && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(135deg, rgba(2,132,199,0.03) 0%, transparent 60%)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Coming soon overlay */}
+      {isComingSoon && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+          }}
+        >
+          <span
+            style={{
+              background: 'rgba(255, 255, 255, 0.9)',
+              color: '#94a3b8',
+              padding: '6px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+            }}
           >
-            <span>路桥报销审核智能体 v2.0 -- Dify Workflow Demo</span>
-            <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>|</span>
-            <span>Maurice | maurice_wen@proton.me</span>
+            即将上线
+          </span>
+        </div>
+      )}
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Top: icon + badges */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: isFeatured
+                ? `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`
+                : '#f1f5f9',
+              border: isFeatured ? 'none' : '1px solid rgba(226, 232, 240, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Icon size={22} color={isFeatured ? 'white' : BLUE} strokeWidth={2} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                ...tierStyle(agent.tier),
+                padding: '3px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+              }}
+            >
+              {agent.tier}
+            </span>
+            {isFeatured && (
+              <span
+                style={{
+                  background: `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`,
+                  color: 'white',
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                }}
+              >
+                LIVE DEMO
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Name */}
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', letterSpacing: '-0.3px', marginBottom: 2 }}>
+            {agent.name}
+          </h2>
+          <p style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>
+            {agent.nameEn}
+          </p>
+        </div>
+
+        {/* Description */}
+        <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>
+          {agent.description}
+        </p>
+
+        {/* Arrow */}
+        {agent.href && !isComingSoon && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: isFeatured
+                  ? `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`
+                  : '#f1f5f9',
+                border: isFeatured ? 'none' : '1px solid rgba(226, 232, 240, 0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ArrowRight size={16} color={isFeatured ? 'white' : '#64748b'} strokeWidth={2} />
+            </div>
           </div>
         )}
       </div>
+    </motion.button>
+  );
+}
 
-      {/* ======== PHASE 4: DETAIL OVERLAY ======== */}
-      <AnimatePresence>
-        {state.phase === 'detail' && detailFile?.result && (
-          <m.div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`审核详情: ${detailFile.name}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+// -- Agent Preview Panel (slide-in from right) --
+
+function AgentPreviewPanel({
+  agent,
+  onClose,
+}: {
+  agent: AgentDef;
+  onClose: () => void;
+}) {
+  const Icon = agent.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 300 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 300 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      style={{
+        position: 'fixed',
+        right: 0,
+        top: 0,
+        height: '100%',
+        width: 384,
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderLeft: '1px solid rgba(226, 232, 240, 0.8)',
+        boxShadow: '-8px 0 40px rgba(0, 0, 0, 0.08)',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          borderBottom: '1px solid rgba(241, 245, 249, 1)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              background: `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
           >
-            {/* Backdrop */}
-            <m.div
-              className="absolute inset-0"
-              style={{ background: 'var(--overlay-bg, rgba(2,6,23,0.85))', backdropFilter: 'blur(8px)' }}
-              onClick={handleCloseDetail}
-              aria-hidden="true"
-            />
-
-            {/* Detail panel */}
-            <m.div
-              className="relative w-full max-w-3xl max-h-[85vh] overflow-auto mx-4"
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
-              transition={{ duration: 0.3, ease: EASE_DEFAULT }}
-            >
-              {/* Close button */}
-              <button
-                onClick={handleCloseDetail}
-                className="absolute top-4 right-4 z-10 p-2 rounded-lg"
-                aria-label="关闭详情"
-                type="button"
+            <Icon size={24} color="white" strokeWidth={2} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
+                {agent.name}
+              </h2>
+              <span
                 style={{
-                  background: 'var(--glass-bg)',
-                  border: '1px solid var(--glass-border)',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
+                  ...tierStyle(agent.tier),
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
                 }}
               >
-                <X size={18} strokeWidth={2} />
-              </button>
+                {agent.tier}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: '#94a3b8' }}>{agent.nameEn}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          type="button"
+          style={{
+            padding: 8,
+            borderRadius: 8,
+            border: 'none',
+            background: 'transparent',
+            color: '#94a3b8',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9';
+            (e.currentTarget as HTMLButtonElement).style.color = '#1e293b';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
+          }}
+        >
+          <X size={20} strokeWidth={2} />
+        </button>
+      </div>
 
-              {/* File name header */}
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Description */}
+        <div>
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            介绍
+          </h3>
+          <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.7 }}>
+            {agent.description}
+          </p>
+        </div>
+
+        {/* Capabilities */}
+        <div>
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            核心能力
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {getCapabilities(agent.id).map((cap) => (
               <div
-                className="glass-bright rounded-t-2xl px-8 py-4"
-                style={{ borderBottom: '1px solid rgba(13,148,136,0.1)' }}
+                key={cap}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: '#f8fafc',
+                  border: '1px solid rgba(241, 245, 249, 1)',
+                }}
               >
-                <div className="flex items-center gap-3">
-                  <FileText size={18} color="#0D9488" strokeWidth={2} />
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {detailFile.name}
-                  </span>
-                  {detailFile.handwritingRatio > 0.4 && (
-                    <span className="badge badge-amber" style={{ fontSize: 11 }}>
-                      手写为主 ({Math.round(detailFile.handwritingRatio * 100)}%)
-                    </span>
-                  )}
-                </div>
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: BLUE,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 13, color: '#334155' }}>{cap}</span>
               </div>
+            ))}
+          </div>
+        </div>
 
-              <ResultPanel result={detailFile.result} onReset={handleCloseDetail} />
-            </m.div>
-          </m.div>
+        {/* Tags */}
+        <div>
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            适用场景
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {getTags(agent.id).map((tag) => (
+              <span
+                key={tag}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  border: '1px solid rgba(226, 232, 240, 0.8)',
+                  background: 'white',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#64748b',
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Status */}
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 12,
+            background: agent.status === 'active'
+              ? 'rgba(13, 148, 136, 0.05)'
+              : 'rgba(100, 116, 139, 0.05)',
+            border: `1px solid ${agent.status === 'active' ? 'rgba(13, 148, 136, 0.12)' : 'rgba(100, 116, 139, 0.1)'}`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Zap size={14} color={agent.status === 'active' ? TEAL : '#94a3b8'} strokeWidth={2} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: agent.status === 'active' ? '#0f766e' : '#64748b' }}>
+              {agent.status === 'active' ? '已就绪' : '开发中'}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: agent.status === 'active' ? '#0f766e' : '#94a3b8', opacity: 0.8 }}>
+            {agent.status === 'active'
+              ? '此智能体已上线，可直接使用。'
+              : '此智能体正在开发中，敬请期待。'}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom CTA */}
+      <div style={{ padding: 16, borderTop: '1px solid rgba(241, 245, 249, 1)' }}>
+        {agent.href && agent.status === 'active' ? (
+          <Link
+            href={agent.href}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '12px 24px',
+              borderRadius: 12,
+              border: 'none',
+              background: `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`,
+              color: 'white',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'none',
+              boxShadow: '0 4px 16px rgba(2, 132, 199, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Play size={16} strokeWidth={2} />
+            进入工作台
+            <ArrowRight size={16} strokeWidth={2} />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '12px 24px',
+              borderRadius: 12,
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+              background: '#f8fafc',
+              color: '#94a3b8',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'not-allowed',
+            }}
+          >
+            {agent.status === 'coming-soon' ? '即将上线' : '暂无工作台'}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// -- Helper data --
+
+function getCapabilities(agentId: string): string[] {
+  const map: Record<string, string[]> = {
+    'expense-audit': ['OCR 智能识别', '单据自动拆分', '接待类型判定', '合规规则校验', '审核建议生成'],
+    'meeting': ['实时录音转写', '智能纪要生成', '待办自动提取', '多语言支持'],
+    'deck': ['结构化叙事', '智能版式生成', '演讲备注', '品牌模板适配'],
+    'document': ['多模板支持', '格式规范检查', '一键导出', '版本管理'],
+    'contract': ['风险条款识别', '逐条审核', '修改建议生成', '法律合规校验'],
+    'data': ['报表智能处理', '数据清洗', '可视化图表', '洞察自动生成'],
+    'research': ['深度调研', '竞品分析', '结构化报告', '趋势预测'],
+    'bidding': ['标书生成', '合规检查', '评分预测', '历史分析'],
+  };
+  return map[agentId] || ['智能处理', '自动化分析', '报告生成'];
+}
+
+function getTags(agentId: string): string[] {
+  const map: Record<string, string[]> = {
+    'expense-audit': ['财务', '合规', '审计', '报销'],
+    'meeting': ['协作', '会议', '效率', '记录'],
+    'deck': ['演示', '设计', '报告', '品牌'],
+    'document': ['公文', '行政', '规范', '模板'],
+    'contract': ['法务', '合同', '风控', '合规'],
+    'data': ['数据', '分析', '可视化', '报表'],
+    'research': ['调研', '洞察', '竞品', '趋势'],
+    'bidding': ['招标', '投标', '采购', '评审'],
+  };
+  return map[agentId] || ['通用', '办公', '效率'];
+}
+
+// -- Animation Variants --
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+};
+
+// -- Page Component --
+
+export default function PlatformHome() {
+  const [query, setQuery] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('all');
+  const [selectedAgent, setSelectedAgent] = React.useState<AgentDef | null>(null);
+
+  const featuredAgents = React.useMemo(() => {
+    return PLATFORM_AGENTS.filter(a => a.tier === 'S').slice(0, 6);
+  }, []);
+
+  const filteredAgents = React.useMemo(() => {
+    let agents = PLATFORM_AGENTS;
+
+    if (query.trim()) {
+      const keyword = query.trim().toLowerCase();
+      agents = agents.filter(a =>
+        [a.name, a.nameEn, a.description].join(' ').toLowerCase().includes(keyword)
+      );
+    }
+
+    if (selectedCategory !== 'all') {
+      agents = agents.filter(a => AGENT_CATEGORY_MAP[a.id] === selectedCategory);
+    }
+
+    return agents;
+  }, [query, selectedCategory]);
+
+  const activeAgents = PLATFORM_AGENTS.filter(a => a.status === 'active');
+
+  return (
+    <main className="h-full flex flex-col overflow-hidden">
+      {/* PageHeader - sticky top bar */}
+      <motion.header
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          background: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(226, 232, 240, 0.6)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Sparkles size={20} color={BLUE} strokeWidth={2} />
+            <div>
+              <h1 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', letterSpacing: '-0.3px' }}>
+                专业智能体
+              </h1>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                选择专家，直接进入生产交付
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 14px',
+                borderRadius: 10,
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(226, 232, 240, 0.8)',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+              }}
+            >
+              <Bot size={14} color={BLUE} strokeWidth={2} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{PLATFORM_AGENTS.length}</span>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>位专家</span>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 14px',
+                borderRadius: 10,
+                background: 'rgba(240, 253, 250, 0.8)',
+                border: '1px solid rgba(13, 148, 136, 0.12)',
+              }}
+            >
+              <Zap size={14} color={TEAL} strokeWidth={2} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f766e' }}>{activeAgents.length}</span>
+              <span style={{ fontSize: 12, color: '#0f766e', opacity: 0.7 }}>就绪</span>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Scrollable content area */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <div style={{ padding: '24px 24px 32px' }}>
+
+          {/* Section 1: Featured Agents Horizontal Scroll */}
+          <motion.div
+            {...fadeInUp}
+            transition={{ duration: 0.5 }}
+            style={{ marginBottom: 32 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Star size={18} color="#f59e0b" strokeWidth={2} />
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>精选智能体</h2>
+              </div>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>推荐使用</span>
+            </div>
+
+            <div
+              className="scrollbar-hide"
+              style={{
+                display: 'flex',
+                gap: 16,
+                overflowX: 'auto',
+                paddingBottom: 8,
+              }}
+            >
+              {featuredAgents.map((agent, index) => (
+                <FeaturedAgentCard
+                  key={agent.id}
+                  agent={agent}
+                  index={index}
+                  onSelect={() => setSelectedAgent(agent)}
+                />
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Section 2: Search & Category Filter */}
+          <motion.div
+            {...fadeInUp}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            style={{ marginBottom: 24 }}
+          >
+            <div style={{ position: 'relative', maxWidth: 400, marginBottom: 16 }}>
+              <Search
+                size={16}
+                strokeWidth={2}
+                style={{
+                  position: 'absolute',
+                  left: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#94a3b8',
+                }}
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜索专家 / 场景 / 能力..."
+                style={{
+                  width: '100%',
+                  height: 42,
+                  paddingLeft: 40,
+                  paddingRight: 14,
+                  borderRadius: 12,
+                  border: '1px solid rgba(226, 232, 240, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.6)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  color: '#1e293b',
+                  fontSize: 14,
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(2, 132, 199, 0.4)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.8)';
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+              {AGENT_CATEGORIES.map((cat) => {
+                const isActive = selectedCategory === cat.id;
+                const CatIcon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 16px',
+                      borderRadius: 12,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      border: isActive ? 'none' : '1px solid rgba(226, 232, 240, 0.6)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: isActive
+                        ? `linear-gradient(135deg, ${BLUE}, ${BLUE_DARK})`
+                        : 'rgba(255, 255, 255, 0.6)',
+                      color: isActive ? 'white' : '#64748b',
+                      boxShadow: isActive ? '0 4px 12px rgba(2, 132, 199, 0.2)' : 'none',
+                    }}
+                  >
+                    <CatIcon size={14} strokeWidth={2} />
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Section 3: All Agents Grid */}
+          <motion.div
+            {...fadeInUp}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
+              <Sparkles size={14} color="#94a3b8" strokeWidth={2} />
+              <h2 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>
+                {query ? `搜索结果 (${filteredAgents.length})` : '全部智能体'}
+              </h2>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gap: 16,
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              }}
+            >
+              {filteredAgents.map((agent) => (
+                <AgentGridCard
+                  key={agent.id}
+                  agent={agent}
+                  onSelect={() => setSelectedAgent(agent)}
+                />
+              ))}
+
+              {filteredAgents.length === 0 && (
+                <div
+                  style={{
+                    gridColumn: '1 / -1',
+                    borderRadius: 16,
+                    border: '2px dashed rgba(226, 232, 240, 0.6)',
+                    background: 'rgba(248, 250, 252, 0.5)',
+                    padding: '48px 24px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Sparkles size={48} color="#cbd5e1" strokeWidth={1.5} style={{ margin: '0 auto 16px' }} />
+                  <p style={{ fontSize: 14, color: '#94a3b8' }}>
+                    暂无匹配的专家，请调整关键词。
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '16px 24px 24px',
+            color: '#94a3b8',
+            fontSize: 11,
+            lineHeight: 2.2,
+          }}
+        >
+          <span>灵阙智能体平台 v3.0 -- Enterprise Edition</span>
+          <span style={{ margin: '0 8px', color: '#cbd5e1' }}>|</span>
+          <span>Maurice | maurice_wen@proton.me</span>
+        </div>
+      </div>
+
+      {/* Agent Preview Panel */}
+      <AnimatePresence>
+        {selectedAgent && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.15)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                zIndex: 40,
+              }}
+              onClick={() => setSelectedAgent(null)}
+            />
+            <AgentPreviewPanel
+              agent={selectedAgent}
+              onClose={() => setSelectedAgent(null)}
+            />
+          </>
         )}
       </AnimatePresence>
-    </div>
-    </MotionConfig>
-    </LazyMotion>
+    </main>
   );
 }

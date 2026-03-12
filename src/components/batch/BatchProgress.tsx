@@ -8,6 +8,7 @@ import {
 import type { BatchFile, WorkflowStepDef } from '@/lib/types';
 import { SUGGESTION_BADGE } from '@/lib/constants';
 import { DURATION, EASE_DEFAULT } from '@/lib/animations';
+import AuditLog from './AuditLog';
 
 // -- Props --
 
@@ -318,7 +319,7 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
               style={{
                 fontSize: 11,
                 padding: '4px 10px',
-                background: 'rgba(209,224,222,0.5)',
+                background: 'var(--glass-bg)',
                 color: 'var(--text-secondary)',
                 border: '1px solid rgba(13,148,136,0.3)',
               }}
@@ -382,12 +383,6 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
 
   // Active file index (first processing file)
   const activeFileIndex = files.findIndex(f => f.status === 'processing');
-
-  // Active file step detail
-  const activeFile = activeFileIndex >= 0 ? files[activeFileIndex] : null;
-  const activeStepDef = activeFile && activeFile.currentStep > 0
-    ? steps[activeFile.currentStep - 1]
-    : null;
 
   // Status label
   const statusLabel = processingCount > 0
@@ -476,97 +471,32 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
         />
       </div>
 
-      {/* -- File cards list (scrollable) -- */}
+      {/* -- File cards + AI Reasoning Log (unified container) -- */}
       <div
-        className="glass-bright rounded-2xl p-4 flex-1 min-h-0"
-        style={{
-          overflowY: 'auto',
-        }}
+        className="glass-bright rounded-2xl flex-1 min-h-0 flex flex-col"
+        style={{ overflow: 'hidden' }}
       >
-        <AnimatePresence mode="popLayout">
-          {files.map((file, i) => (
-            <FileCard
-              key={file.id}
-              file={file}
-              index={i}
-              isActive={i === activeFileIndex}
-              steps={steps}
-              totalSteps={totalSteps}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* -- Active file step detail panel -- */}
-      <AnimatePresence>
-        {activeStepDef && activeFile && (
-          <motion.div
-            key={`step-detail-${activeFile.id}-${activeFile.currentStep}`}
-            className="mt-4 p-5 rounded-xl"
-            style={{
-              background: 'rgba(13,148,136,0.06)',
-              border: '1px solid rgba(13,148,136,0.15)',
-            }}
-            initial={{ opacity: 0, y: 12, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
-            transition={{ duration: 0.4, ease: EASE_DEFAULT }}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <motion.div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#0D9488',
-                }}
-                animate={{
-                  boxShadow: [
-                    '0 0 4px rgba(13,148,136,0.4)',
-                    '0 0 14px rgba(13,148,136,0.8)',
-                    '0 0 4px rgba(13,148,136,0.4)',
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
+        {/* File cards (compact, no scroll — cards stay at top) */}
+        <div className="p-4 pb-0 shrink-0">
+          <AnimatePresence mode="popLayout">
+            {files.map((file, i) => (
+              <FileCard
+                key={file.id}
+                file={file}
+                index={i}
+                isActive={i === activeFileIndex}
+                steps={steps}
+                totalSteps={totalSteps}
               />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#5EEAD4' }}>
-                {activeFile.name}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 2px' }}>--</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#0D9488' }}>
-                步骤 {activeFile.currentStep}/{totalSteps} -- {activeStepDef.name}
-              </span>
-            </div>
+            ))}
+          </AnimatePresence>
+        </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 20 }}>
-              {activeStepDef.description}
-            </p>
-
-            {/* Step progress within current file */}
-            <div className="mt-3" style={{ marginLeft: 20 }}>
-              <div className="progress-bar" style={{ height: 3 }}>
-                <motion.div
-                  className="progress-fill"
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${(activeFile.currentStep / totalSteps) * 100}%`,
-                  }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  style={{ height: '100%' }}
-                />
-              </div>
-              <div className="flex items-center justify-between mt-1">
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  已完成 {activeFile.stepStates.filter(s => s.status === 'completed').length} 个步骤
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  剩余 {totalSteps - activeFile.currentStep} 个步骤
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* AI Reasoning Log (fills remaining space, scrollable) */}
+        <div className="flex-1 min-h-0 px-4 pb-4">
+          <AuditLog files={files} steps={steps} />
+        </div>
+      </div>
     </motion.section>
   );
 }

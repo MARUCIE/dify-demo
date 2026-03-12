@@ -33,6 +33,7 @@ export interface SubDocument {
   found: boolean;      // whether this document was found in the PDF
   page?: number;       // starting page number in the merged PDF
   pageCount?: number;  // how many pages this sub-document spans
+  derived?: boolean;   // true when inferred from issues (not from Dify API)
 }
 
 // Standard sub-document types for SRBG reimbursement packages
@@ -53,6 +54,7 @@ export interface AuditResult {
   subDocuments?: SubDocument[]; // documents identified in the merged PDF
   amount?: number;             // total reimbursement amount (元)
   pageCount?: number;          // total pages in the PDF
+  aiSummary?: string;          // AI-generated per-file summary (from Dify or client-side)
 }
 
 // -- v2.0 Batch types --
@@ -76,6 +78,12 @@ export interface BatchFile {
 export interface BatchSummary {
   totalFiles: number;
   completed: number;
+  // Sub-document level counts (primary display)
+  totalSubDocs: number;
+  subDocPassed: number;
+  subDocNeedsReview: number;
+  subDocRejected: number; // includes missing
+  // File level counts (secondary, for table rows)
   passed: number;
   needsReview: number;
   rejected: number;

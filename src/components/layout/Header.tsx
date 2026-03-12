@@ -1,41 +1,47 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CircleCheck, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Sun } from 'lucide-react';
 import { DURATION } from '@/lib/animations';
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+function readStoredTheme(): 'dark' | 'light' {
+  const saved = localStorage.getItem('theme');
+  return saved === 'dark' ? 'dark' : 'light';
+}
 
+function ThemeToggle() {
   useEffect(() => {
-    const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
-    const resolved = saved ?? 'dark';
-    setTheme(resolved);
-    document.documentElement.setAttribute('data-theme', resolved);
+    document.documentElement.setAttribute('data-theme', readStoredTheme());
   }, []);
 
   const toggle = useCallback(() => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
-  }, [theme]);
+  }, []);
 
   return (
     <button
       onClick={toggle}
       className="btn-secondary"
       style={{ padding: '6px 10px', borderRadius: 8 }}
-      aria-label={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+      aria-label="切换深浅色模式"
       type="button"
     >
-      {theme === 'dark' ? <Sun size={16} strokeWidth={2} /> : <Moon size={16} strokeWidth={2} />}
+      <Sun size={16} strokeWidth={2} />
     </button>
   );
 }
 
-export default function Header() {
+interface HeaderProps {
+  backHref?: string;
+  backLabel?: string;
+}
+
+export default function Header({ backHref, backLabel }: HeaderProps) {
   return (
     <motion.header
       className="flex items-center justify-between py-3 mb-2"
@@ -44,6 +50,17 @@ export default function Header() {
       transition={{ duration: DURATION.slow, ease: 'easeOut' }}
     >
       <div className="flex items-center gap-4">
+        {/* Back link */}
+        {backHref && (
+          <Link
+            href={backHref}
+            className="btn-secondary"
+            style={{ padding: '6px 10px', borderRadius: 8, textDecoration: 'none' }}
+            aria-label={backLabel || '返回'}
+          >
+            <ArrowLeft size={16} strokeWidth={2} />
+          </Link>
+        )}
         {/* Logo */}
         <div
           className="logo-glow flex items-center justify-center"

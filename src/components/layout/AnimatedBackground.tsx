@@ -1,7 +1,6 @@
 'use client';
 
 // Ambient background: subtle grid + radial glows
-// n8n flow network removed — the WorkflowPipeline component IS the node flow now
 
 export default function AnimatedBackground() {
   return (

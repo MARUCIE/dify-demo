@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Experience Map -- 灵阙智能体平台 Demo</title>
+<style>
+:root {
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --text: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --border: #E7E5E4;
+  --border-light: #F5F5F4;
+  --accent: #0D9488;
+  --accent-light: #CCFBF1;
+  --accent-dark: #0F766E;
+  --code-bg: #F5F5F4;
+  --code-border: #E7E5E4;
+  --table-stripe: #FAFAF9;
+  --table-header-bg: #F5F5F4;
+  --blockquote-bg: #F5F5F4;
+  --blockquote-border: #0D9488;
+  --shadow: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+  --shadow-lg: 0 4px 12px rgba(28,25,23,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0C0A09;
+    --surface: #1C1917;
+    --text: #E7E5E4;
+    --text-secondary: #A8A29E;
+    --text-muted: #78716C;
+    --border: #292524;
+    --border-light: #1C1917;
+    --accent: #2DD4BF;
+    --accent-light: #042F2E;
+    --accent-dark: #5EEAD4;
+    --code-bg: #1C1917;
+    --code-border: #292524;
+    --table-stripe: #1C1917;
+    --table-header-bg: #292524;
+    --blockquote-bg: #1C1917;
+    --blockquote-border: #2DD4BF;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+  }
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Source Han Serif SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+  font-size: 16px; line-height: 1.8; color: var(--text); background-color: var(--bg);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 60px 32px 40px; }
+.doc-header { margin-bottom: 48px; padding-bottom: 32px; border-bottom: 2px solid var(--accent); }
+.doc-header h1 { font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--text); margin-bottom: 12px; letter-spacing: -0.01em; }
+.doc-header .subtitle { font-size: 15px; color: var(--text-secondary); font-style: italic; }
+h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 56px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; }
+h3 { font-size: 19px; font-weight: 600; color: var(--text); margin-top: 36px; margin-bottom: 14px; }
+h4 { font-size: 16px; font-weight: 600; color: var(--accent); margin-top: 28px; margin-bottom: 10px; }
+p { margin-bottom: 16px; color: var(--text-secondary); }
+strong { color: var(--text); font-weight: 600; }
+blockquote { margin: 24px 0; padding: 16px 24px; background: var(--blockquote-bg); border-left: 4px solid var(--blockquote-border); border-radius: 0 8px 8px 0; color: var(--text-secondary); font-style: italic; }
+blockquote p { margin-bottom: 0; }
+ul, ol { margin: 12px 0 20px 24px; color: var(--text-secondary); }
+li { margin-bottom: 6px; padding-left: 4px; }
+li strong { color: var(--text); }
+.table-wrapper { overflow-x: auto; margin: 20px 0 28px; border-radius: 8px; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; }
+thead { background: var(--table-header-bg); }
+th { padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text); border-bottom: 2px solid var(--accent); white-space: nowrap; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+tbody tr:hover { background: var(--accent-light); }
+code { font-family: "SF Mono", "Fira Code", "Cascadia Code", "Source Code Pro", monospace; font-size: 0.875em; background: var(--code-bg); border: 1px solid var(--code-border); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+pre { margin: 20px 0 28px; padding: 20px 24px; background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px; overflow-x: auto; box-shadow: var(--shadow); }
+pre code { background: none; border: none; padding: 0; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+hr { border: none; height: 1px; background: var(--border); margin: 48px 0; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+a:hover { border-bottom-color: var(--accent); }
+h2 .section-num { color: var(--accent); margin-right: 8px; }
+body::before { content: ""; display: block; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-dark), var(--accent)); }
+
+@media (max-width: 640px) {
+  .container { padding: 40px 16px 32px; }
+  .doc-header h1 { font-size: 26px; }
+  h2 { font-size: 20px; } h3 { font-size: 17px; }
+  table { font-size: 13px; } th, td { padding: 8px 10px; }
+}
+footer { text-align: center; padding: 60px 20px 40px; color: #9B9B9D; font-size: 13px; line-height: 2.2; }
+footer p { color: #9B9B9D; margin-bottom: 0; }
+footer .gen-note { font-size: 12px; margin-top: 8px; }
+@media print { body::before { display: none; } .container { max-width: 100%; padding: 20px; } table { font-size: 12px; } h2 { break-before: page; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>User Experience Map -- 灵阙智能体平台 Demo</h1>
+  <p class="subtitle">用户体验地图 | v3.1 | 2026-03-13 | 完整平台导航 + 8 页面功能闭环</p>
+</div>
+
+<h2><span class="section-num">1.</span> 设计范式: 多页面平台 + 毛玻璃体系</h2>
+
+<p><strong>PROJECT_DIR</strong>: <code>/Users/mauricewen/Projects/21-dify-demo</code></p>
+
+<p>v3.0 从单页渐进披露升级为完整的 B2B SaaS 平台体验。用户通过左侧可收缩 Sidebar 导航访问 8 个功能页面。</p>
+
+<pre><code>+---------+-----------------------------------------------+
+|         |  PageHeader (sticky, frosted glass)            |
+|  S      |  +-------------------------------------------+ |
+|  i      |  | Title + Stats + Actions                   | |
+|  d      |  +-------------------------------------------+ |
+|  e      +-----------------------------------------------+
+|  b      |  Content Area (scrollable)                     |
+|  a      |  +----------------------------------------+   |
+|  r      |  |  Search / Filter Bar                    |   |
+|         |  +----------------------------------------+   |
+|  64px   |  |  +------+ +------+ +------+ +------+   |   |
+|   ^v    |  |  | Card | | Card | | Card | | Card |   |   |
+|  256px  |  |  +------+ +------+ +------+ +------+   |   |
+|         |  |  +------+ +------+ +------+ +------+   |   |
+|         |  |  | Card | | Card | | Card | | Card |   |   |
+|         |  |  +------+ +------+ +------+ +------+   |   |
+|         |  +----------------------------------------+   |
+|         +-----------------------------------------------+
+|         |  Footer (灵阙智能体平台 v3.0)                   |
++---------+-----------------------------------------------+</code></pre>
+
+<p><strong>一致的页面结构</strong>: 所有页面遵循 PageHeader -> Search/Filter -> Content Grid -> Footer 模式。</p>
+
+<h3>1.1 审核页面保留: 单屏渐进披露</h3>
+
+<p><code>/audit</code> 路由保留 v2 的单屏渐进披露体验 (4 Phase: upload->running->completed->detail)。</p>
+
+<hr>
+
+<h2><span class="section-num">2.</span> 阶段转换地图</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>From</th><th>To</th><th>触发条件</th><th>动画</th><th>时长</th></tr></thead>
+<tbody>
+<tr><td>upload</td><td>running</td><td>点击 "启动批量审核"</td><td>Instant swap (plain div)</td><td>--</td></tr>
+<tr><td>running</td><td>completed</td><td>All files processed</td><td>Instant swap (plain div)</td><td>--</td></tr>
+<tr><td>completed</td><td>detail</td><td>点击文件行或 "查看详情"</td><td>Scale + fade overlay (AnimatePresence)</td><td>0.3s</td></tr>
+<tr><td>detail</td><td>completed</td><td>点击背景或关闭按钮</td><td>Scale down + fade (AnimatePresence)</td><td>0.3s</td></tr>
+<tr><td>any</td><td>upload</td><td>点击 "重新审核"</td><td>Instant reset (plain div)</td><td>--</td></tr>
+</tbody>
+</table>
+</div>
+
+<blockquote>
+<p><strong>Note (D-015)</strong>: 阶段转换使用 plain div 条件渲染替代 AnimatePresence。framer-motion 12 + React 19 破坏了 AnimatePresence <code>mode="wait"</code> 的 exit/enter 排序机制。AnimatePresence 仅保留用于详情弹窗 overlay (fixed inset-0 z-50 dialog)，因为简单的 show/hide 可以可靠工作。</p>
+</blockquote>
+
+<hr>
+
+<h2><span class="section-num">3.</span> 平台导航旅程 (v3.0)</h2>
+
+<h3>3.0 平台入口与导航</h3>
+
+<p><strong>用户目标</strong>: 浏览平台功能，找到所需智能体或工具</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>0.1</td><td>打开平台</td><td>展示 Agent List (/) + 左侧 Sidebar</td><td>"这是一个完整的平台"</td></tr>
+<tr><td>0.2</td><td>浏览 8 个智能体卡片</td><td>状态 badge + 标签 + 描述</td><td>"功能很丰富"</td></tr>
+<tr><td>0.3</td><td>搜索特定智能体</td><td>实时过滤匹配</td><td>"搜索很方便"</td></tr>
+<tr><td>0.4</td><td>点击 Sidebar 导航</td><td>页面切换，active indicator 跟随</td><td>"导航清晰"</td></tr>
+<tr><td>0.5</td><td>收起 Sidebar</td><td>64px 图标模式，更多空间</td><td>"空间利用灵活"</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>Page Transitions</strong>: Sidebar nav items 使用 Next.js <code>&lt;Link&gt;</code> 路由，layoutId 动画指示当前页面。</p>
+
+<h3>3.0.1 知识库 (<code>/knowledge</code>)</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>K.1</td><td>进入知识库页面</td><td>5 个 KB 卡片 + 状态 badges + 统计概览</td><td>"知识管理很完善"</td></tr>
+<tr><td>K.2</td><td>查看 KB 状态</td><td>已激活(绿)/索引中(黄, spin)/异常(红)</td><td>"状态一目了然"</td></tr>
+<tr><td>K.3</td><td>搜索知识库</td><td>实时过滤 (名称/描述/模型)</td><td>"快速定位"</td></tr>
+<tr><td>K.4</td><td>查看概览面板</td><td>知识库总数/已激活/总文档/总分块 4 项指标</td><td>"数据透明"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.0.2 历史记录 (<code>/history</code>)</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>H.1</td><td>进入历史记录</td><td>默认显示"对话记录" Tab</td><td>"有完整的使用记录"</td></tr>
+<tr><td>H.2</td><td>浏览对话卡片</td><td>Agent 名称 badge + 标题 + 消息数/耗时/Token</td><td>"数据详实"</td></tr>
+<tr><td>H.3</td><td>切换到"决策审计" Tab</td><td>审计追踪列表</td><td>"合规审计很重要"</td></tr>
+<tr><td>H.4</td><td>点击审计追踪卡片</td><td>右侧滑入 TraceDetail 面板 (timeline)</td><td>"每一步都可追溯"</td></tr>
+<tr><td>H.5</td><td>查看步骤详情</td><td>状态图标 + 耗时 + 错误/警告详情</td><td>"问题定位精准"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.0.3 设置 (<code>/settings</code>)</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>S.1</td><td>进入设置页面</td><td>左侧 sub-nav (4 sections) + 右侧内容</td><td>"配置项丰富"</td></tr>
+<tr><td>S.2</td><td>模型配置</td><td>5 个 AI Provider 卡片 (品牌色图标)</td><td>"支持多模型"</td></tr>
+<tr><td>S.3</td><td>通知设置</td><td>4 个 toggle 开关 (交互式)</td><td>"可自定义通知"</td></tr>
+<tr><td>S.4</td><td>安全权限</td><td>访问控制 + 审计日志 + 数据加密卡片</td><td>"安全管控到位"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.0.4 工作流 (<code>/workflows</code> + <code>/workflows/expense-audit</code>)</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>W.1</td><td>进入工作流列表</td><td>工作流卡片 + 状态/触发类型</td><td>"流程管理清晰"</td></tr>
+<tr><td>W.2</td><td>点击"报销审核工作流"</td><td>进入 GoldenRatio 编辑器</td><td>"编辑器很专业"</td></tr>
+<tr><td>W.3</td><td>查看左侧配置面板 (38.2%)</td><td>基本信息 + 变量 + 节点列表 + 执行记录</td><td>"配置项完整"</td></tr>
+<tr><td>W.4</td><td>查看右侧画布 (61.8%)</td><td>n8n 风格分支 DAG (流程节点 + 决策节点)</td><td>"可视化编排直观"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.0.5 模板库 (<code>/templates</code>)</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>T.1</td><td>进入模板库</td><td>Category tabs + 模板卡片</td><td>"模板库丰富"</td></tr>
+<tr><td>T.2</td><td>切换分类 tab</td><td>卡片过滤 + 动画</td><td>"分类清晰"</td></tr>
+<tr><td>T.3</td><td>查看模板详情</td><td>难度/时间/标签 badges</td><td>"信息完整"</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h3>3.1 审核旅程: Phase 1 Upload (上传态) -- <code>/audit</code></h3>
+
+<p><strong>用户目标</strong>: 快速批量上传报销 PDF 文件</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>1.1</td><td>打开页面</td><td>n8n 风格节点流动画背景 (16 节点 + 15 虚线流动连接) + KPI 统计</td><td>"这看起来很专业"</td></tr>
+<tr><td>1.2</td><td>拖拽文件/文件夹至 dropzone</td><td>conic gradient 旋转边框 + dragover 高亮</td><td>"交互很流畅"</td></tr>
+<tr><td>1.3</td><td>文件验证 (PDF, &lt;20MB, &lt;100个)</td><td>错误文件红色提示 (5s 自动消失)</td><td>"有错误提示很放心"</td></tr>
+<tr><td>1.4</td><td>查看文件列表</td><td>表格显示文件名/大小/页数/手写比例</td><td>"手写比例检测很酷"</td></tr>
+<tr><td>1.5</td><td>设置审核基准日期</td><td>日期选择器 (不允许未来日期)</td><td>--</td></tr>
+<tr><td>1.6</td><td>点击"启动批量审核"</td><td>Phase 过渡动画开始</td><td>"期待看到 AI 工作"</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>关键交互</strong>:</p>
+<ul>
+  <li>Dropzone 状态: 空(全屏) -> 有文件(缩小+显示列表)</li>
+  <li>文件夹递归扫描: <code>webkitGetAsEntry()</code> API</li>
+  <li>手写比例: 上传时随机模拟 (demo); 实际接入后由 OCR 引擎返回</li>
+  <li>文件列表: 带 hover 高亮 + 动画进入 + 删除按钮</li>
+</ul>
+
+<h3>3.2 Phase 2: Running (审核态)</h3>
+
+<p><strong>用户目标</strong>: 观看 AI 逐步审核每个文件的过程</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>2.1</td><td>观察左侧工作流</td><td>10 步流水线依次激活/完成</td><td>"流程清晰可见"</td></tr>
+<tr><td>2.2</td><td>观察右侧批量进度</td><td>文件卡片逐个处理, 呼吸光效</td><td>"批量处理效率高"</td></tr>
+<tr><td>2.3</td><td>查看活跃步骤详情</td><td>底部详情栏显示当前步骤描述</td><td>"知道 AI 在做什么"</td></tr>
+<tr><td>2.4</td><td>查看总体进度</td><td>顶部进度条 + 百分比 + 圆形进度</td><td>"进度一目了然"</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>关键交互</strong>:</p>
+<ul>
+  <li>工作流: 步骤图标 idle->active(蓝色脉冲)->completed(绿色对勾)/error(红色)</li>
+  <li>连线: active 时流动粒子效果 (CSS animation), completed 变绿</li>
+  <li>文件卡片: 活跃卡片有蓝色呼吸光效 + typing cursor 显示当前步骤</li>
+  <li>步骤点阵: 10 个小圆点实时反映每个步骤状态</li>
+</ul>
+
+<h3>3.3 Phase 3: Completed (结果态)</h3>
+
+<p><strong>用户目标</strong>: 查看批量审核汇总结果</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>3.1</td><td>查看总览</td><td>3 张汇总卡片 (通过/复核/不通过) + 动画计数器</td><td>"一目了然的汇总"</td></tr>
+<tr><td>3.2</td><td>查看统计</td><td>4 项指标 (文件数/总耗时/平均耗时/问题数)</td><td>"数据详实"</td></tr>
+<tr><td>3.3</td><td>排序/筛选结果表</td><td>点击表头排序 (6 列均可排序)</td><td>"操作灵活"</td></tr>
+<tr><td>3.4</td><td>点击"查看详情"</td><td>进入 Phase 4 详情 overlay</td><td>"深入了解"</td></tr>
+<tr><td>3.5</td><td>点击"复制汇总"</td><td>结构化文本复制到剪贴板 + "已复制"反馈</td><td>"方便分享"</td></tr>
+<tr><td>3.6</td><td>点击"重新审核"</td><td>重置回 Phase 1</td><td>--</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>关键交互</strong>:</p>
+<ul>
+  <li>汇总卡片: 渐变背景 + 装饰光球 + 动画数字递增 + 百分比条</li>
+  <li>结果表: hover 右移效果 + 建议 badge 颜色编码</li>
+  <li>排序: 6 列可排序, 升序/降序切换, 活跃列高亮</li>
+</ul>
+
+<h3>3.4 Phase 4: Detail (详情态)</h3>
+
+<p><strong>用户目标</strong>: 查看单个文件的详细审核结果</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>用户行为</th><th>系统响应</th><th>情绪状态</th></tr></thead>
+<tbody>
+<tr><td>4.1</td><td>查看文件信息</td><td>文件名 + 手写比例 badge</td><td>"知道是哪个文件"</td></tr>
+<tr><td>4.2</td><td>查看审核结论</td><td>招待类型 + 建议 badge + 金额 + 耗时</td><td>"结论清晰"</td></tr>
+<tr><td>4.2b</td><td>查看单据拆分</td><td>6 种标准单据 found/missing 网格 + 页码</td><td>"单据识别很智能"</td></tr>
+<tr><td>4.3</td><td>查看问题列表</td><td>严重(红)/警告(黄) issue cards</td><td>"问题分类明确"</td></tr>
+<tr><td>4.4</td><td>复制结果</td><td>结构化文本复制 + "已复制"反馈</td><td>"可以直接分享"</td></tr>
+<tr><td>4.5</td><td>关闭 overlay</td><td>点击背景或 X 按钮返回 Phase 3</td><td>--</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>关键交互</strong>:</p>
+<ul>
+  <li>Overlay: <code>backdrop-filter: blur(8px)</code> + 深色半透明背景</li>
+  <li>进入动画: scale(0.9) + y(30) -> scale(1) + y(0)</li>
+  <li>关闭: 点击 backdrop 或 X 按钮</li>
+</ul>
+
+<hr>
+
+<h2><span class="section-num">4.</span> 视觉设计系统 (v3.0)</h2>
+
+<h3>4.1 双色品牌体系</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>Token</th><th>Value</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><strong>Sky Blue (Platform)</strong></td><td><code>#0284C7</code> / <code>#0369A1</code></td><td>工作流、模板、知识库、历史、设置</td></tr>
+<tr><td><strong>Jade Teal (Agent)</strong></td><td><code>#0D9488</code> / <code>#0F766E</code></td><td>智能体列表、审核、Sidebar active</td></tr>
+<tr><td>Background</td><td><code>white</code> / <code>rgba(255,255,255,0.85)</code></td><td>Page + Sidebar</td></tr>
+<tr><td>Surface</td><td><code>rgba(255,255,255,0.7)</code></td><td>Frosted glass cards</td></tr>
+<tr><td>Border</td><td><code>rgba(226,232,240,0.8)</code></td><td>Card borders</td></tr>
+<tr><td>Shadow</td><td><code>rgba(0,0,0,0.04)</code></td><td>Card elevation</td></tr>
+<tr><td>Text Primary</td><td><code>#1e293b</code></td><td>Headings</td></tr>
+<tr><td>Text Secondary</td><td><code>#64748b</code></td><td>Body text</td></tr>
+<tr><td>Text Muted</td><td><code>#94a3b8</code></td><td>Labels, hints</td></tr>
+<tr><td>Text Pale</td><td><code>#cbd5e1</code></td><td>Timestamps</td></tr>
+<tr><td>Success</td><td><code>#0f766e</code> / <code>rgba(13,148,136,0.08)</code></td><td>Active, passed</td></tr>
+<tr><td>Warning</td><td><code>#b45309</code> / <code>rgba(245,158,11,0.08)</code></td><td>Review, indexing</td></tr>
+<tr><td>Danger</td><td><code>#dc2626</code> / <code>rgba(220,38,38,0.08)</code></td><td>Error, rejected</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4.2 毛玻璃层级系统</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>层级</th><th>Background</th><th>Blur</th><th>Border</th><th>Shadow</th></tr></thead>
+<tbody>
+<tr><td>Sidebar</td><td>rgba(255,255,255,0.85)</td><td>20px</td><td>right 1px slate-200</td><td>4px 0 24px rgba(0,0,0,0.04)</td></tr>
+<tr><td>PageHeader</td><td>rgba(255,255,255,0.7)</td><td>20px</td><td>bottom 1px slate-200</td><td>0 1px 3px rgba(0,0,0,0.03)</td></tr>
+<tr><td>Card</td><td>rgba(255,255,255,0.7)</td><td>16px</td><td>1px slate-200</td><td>0 4px 24px rgba(0,0,0,0.04)</td></tr>
+<tr><td>Stats pill</td><td>rgba(255,255,255,0.8)</td><td>--</td><td>1px slate-200</td><td>--</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4.3 动画系统</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>类别</th><th>时长</th><th>缓动</th><th>备注</th></tr></thead>
+<tbody>
+<tr><td>Page mount</td><td>0.4-0.6s</td><td>spring</td><td>Card stagger (0.05s delay per item)</td></tr>
+<tr><td>Card hover</td><td>0.3s</td><td>ease</td><td>y: -2, scale: 1.01</td></tr>
+<tr><td>Sidebar collapse</td><td>0.2s</td><td>[0.4, 0, 0.2, 1]</td><td>Width 256->64 + text fade</td></tr>
+<tr><td>Sidebar active</td><td>spring</td><td>stiffness:380 damping:30</td><td>layoutId indicator</td></tr>
+<tr><td>Tab switch</td><td>0.2s</td><td>ease</td><td>opacity + translateY</td></tr>
+<tr><td>TraceDetail slide</td><td>0.3s</td><td>spring</td><td>Slide in from right</td></tr>
+<tr><td>Audit phase transitions</td><td>-- (instant)</td><td>--</td><td>Plain div conditional render (D-015); 各组件内部动画提供平滑体验</td></tr>
+<tr><td>Detail modal overlay</td><td>0.3s</td><td>spring</td><td>AnimatePresence scale+fade (唯一保留的 AnimatePresence 用法)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4.4 字体排版</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>元素</th><th>字号</th><th>字重</th><th>颜色</th></tr></thead>
+<tbody>
+<tr><td>Page heading</td><td>14-16px</td><td>700</td><td>#1e293b</td></tr>
+<tr><td>Card title</td><td>15-16px</td><td>700</td><td>#1e293b</td></tr>
+<tr><td>Body text</td><td>13-14px</td><td>400-500</td><td>#64748b</td></tr>
+<tr><td>Label</td><td>11-12px</td><td>500-600</td><td>#94a3b8</td></tr>
+<tr><td>Badge</td><td>11-13px</td><td>600</td><td>theme color</td></tr>
+<tr><td>Logo</td><td>15px</td><td>700</td><td>#1e293b</td></tr>
+<tr><td>Logo sub</td><td>10px</td><td>400</td><td>#94a3b8</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Font stack: <code>-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif</code></p>
+
+<hr>
+
+<h2><span class="section-num">5.</span> 组件清单 (v3.0)</h2>
+
+<p><strong>平台 Shell</strong>:</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>组件</th><th>文件</th><th>范围</th></tr></thead>
+<tbody>
+<tr><td>Sidebar</td><td>workspace/Sidebar.tsx</td><td>All pages -- collapsible 64<->256px, 6 nav items</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>页面组件</strong> (每个页面自包含):</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>页面</th><th>路由</th><th>核心内部组件</th></tr></thead>
+<tbody>
+<tr><td>Agent List</td><td><code>/</code></td><td>AgentCard (inline), search bar, filter tags</td></tr>
+<tr><td>Expense Audit</td><td><code>/audit</code></td><td>AnimatedBackground, Header, StatsBar, UploadZone, WorkflowPipeline, BatchProgress, BatchResultsDashboard, ResultPanel</td></tr>
+<tr><td>Workflow List</td><td><code>/workflows</code></td><td>WorkflowCard (inline), status badges</td></tr>
+<tr><td>Workflow Editor</td><td><code>/workflows/expense-audit</code></td><td>GoldenRatio layout, n8n canvas (WorkflowNode + DecisionNode), config panels</td></tr>
+<tr><td>Templates</td><td><code>/templates</code></td><td>Category tabs, TemplateCard (inline)</td></tr>
+<tr><td>Knowledge Base</td><td><code>/knowledge</code></td><td>KBCard (inline), status badges, stats overview</td></tr>
+<tr><td>History</td><td><code>/history</code></td><td>Tab switcher, ConvCard (inline), TraceCard (inline), TraceDetail panel (timeline)</td></tr>
+<tr><td>Settings</td><td><code>/settings</code></td><td>Sub-nav, ProviderCard (inline), toggles, config sections</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h2><span class="section-num">6.</span> 交互状态矩阵 (v3.0)</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>组件</th><th>Idle</th><th>Hover</th><th>Active</th><th>Disabled</th></tr></thead>
+<tbody>
+<tr><td>Sidebar item</td><td>slate-500 text</td><td>bg slate-100/80</td><td>Teal bg + left indicator</td><td>opacity 0.4</td></tr>
+<tr><td>Platform card</td><td>white/70 glass</td><td>y:-2, scale:1.01</td><td>--</td><td>--</td></tr>
+<tr><td>CTA Button</td><td>gradient fill</td><td>slight lift</td><td>--</td><td>opacity 0.5</td></tr>
+<tr><td>Search input</td><td>slate border</td><td>--</td><td>focus ring</td><td>--</td></tr>
+<tr><td>Tab</td><td>slate text</td><td>--</td><td>brand color + underline</td><td>--</td></tr>
+<tr><td>Toggle</td><td>gray circle</td><td>--</td><td>brand-colored slide</td><td>--</td></tr>
+<tr><td>KB status badge</td><td>colored bg+border</td><td>--</td><td>--</td><td>--</td></tr>
+<tr><td>Trace timeline dot</td><td>colored circle</td><td>--</td><td>--</td><td>--</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h2><span class="section-num">7.</span> 错误与边界情况</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>场景</th><th>系统响应</th><th>UI 反馈</th></tr></thead>
+<tbody>
+<tr><td>Non-PDF file dropped</td><td>Filter out, show validation error</td><td>Red alert with file name (5s auto-dismiss)</td></tr>
+<tr><td>File &gt; 20MB</td><td>Reject, show validation error</td><td>Red alert with file size</td></tr>
+<tr><td>100+ files</td><td>Cap at limit, show warning</td><td>"已达上限" amber badge</td></tr>
+<tr><td>Empty submit</td><td>Button disabled</td><td>opacity 0.4, cursor: not-allowed</td></tr>
+<tr><td>Future date selected</td><td>HTML5 <code>max</code> attribute blocks</td><td>Native date picker restriction</td></tr>
+<tr><td>Copy failed</td><td>Fallback to textarea+execCommand</td><td>Still shows "已复制" feedback</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h2><span class="section-num">8.</span> 无障碍要求</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>要求</th><th>状态</th><th>备注</th></tr></thead>
+<tbody>
+<tr><td>prefers-reduced-motion</td><td>done</td><td>禁用所有动画 + 隐藏 n8n flow network (<code>display: none</code>)</td></tr>
+<tr><td>Keyboard navigation</td><td>done</td><td>Dropzone、结果表、详情弹层均支持键盘操作</td></tr>
+<tr><td>ARIA labels</td><td>done</td><td>Buttons、dialog、sort status、progress 文案已补齐</td></tr>
+<tr><td>Color contrast</td><td>done</td><td>关键 Slate/文本对比度已在 Phase 4 调整</td></tr>
+<tr><td>Screen reader</td><td>partial</td><td>核心流程已覆盖，未做完整真实读屏巡检</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h2><span class="section-num">9.</span> 性能预算</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>指标</th><th>目标</th><th>当前</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td>Bundle (gzip)</td><td>&lt; 500KB</td><td>217KB</td><td>OK</td></tr>
+<tr><td>LCP</td><td>&lt; 2s</td><td>TBD</td><td>Pending Lighthouse</td></tr>
+<tr><td>CLS</td><td>&lt; 0.1</td><td>TBD</td><td>Pending Lighthouse</td></tr>
+<tr><td>FPS (animation)</td><td>60</td><td>TBD</td><td>Pending Chrome DevTools</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<h2><span class="section-num">10.</span> 变更日志</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>日期</th><th>版本</th><th>变更内容</th></tr></thead>
+<tbody>
+<tr><td>2026-03-10</td><td>v1.0</td><td>Initial UXM (single-page 4-phase)</td></tr>
+<tr><td>2026-03-11</td><td>v2.3</td><td>n8n background, SubDocument, dark theme</td></tr>
+<tr><td>2026-03-12</td><td>v3.0</td><td><strong>Platform UXM</strong>: 8-page navigation, dual-color brand, frosted glass system, per-page journey maps (Knowledge/History/Settings/Workflows/Templates)</td></tr>
+<tr><td>2026-03-13</td><td>v3.1</td><td><strong>Animation architecture (D-015)</strong>: phase transitions changed from AnimatePresence fade+slide to instant plain div swaps; AnimatePresence retained only for detail modal; SubDocBar polish</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<footer style="text-align:center; padding:60px 20px 40px; color:#9B9B9D; font-size:13px; line-height:2.2;">
+    <p>灵阙智能体平台 v3.1 -- 用户体验地图</p>
+    <p>Maurice | maurice_wen@proton.me</p>
+    <p style="font-size:12px; margin-top:8px;">Generated 2026-03-13 | Source: USER_EXPERIENCE_MAP.md v3.1</p>
+</footer>
+
+</body>
+</html>

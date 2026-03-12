@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平台优化计划 -- 灵阙智能体平台 Demo</title>
+<style>
+:root {
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --text: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --border: #E7E5E4;
+  --border-light: #F5F5F4;
+  --accent: #0D9488;
+  --accent-light: #CCFBF1;
+  --accent-dark: #0F766E;
+  --code-bg: #F5F5F4;
+  --code-border: #E7E5E4;
+  --table-stripe: #FAFAF9;
+  --table-header-bg: #F5F5F4;
+  --blockquote-bg: #F5F5F4;
+  --blockquote-border: #0D9488;
+  --shadow: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+  --shadow-lg: 0 4px 12px rgba(28,25,23,0.08);
+  --done-bg: #F0FDF4;
+  --done-text: #166534;
+  --pending-bg: #FFFBEB;
+  --pending-text: #92400E;
+  --deferred-bg: #F5F5F4;
+  --deferred-text: #78716C;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0C0A09;
+    --surface: #1C1917;
+    --text: #E7E5E4;
+    --text-secondary: #A8A29E;
+    --text-muted: #78716C;
+    --border: #292524;
+    --border-light: #1C1917;
+    --accent: #2DD4BF;
+    --accent-light: #042F2E;
+    --accent-dark: #5EEAD4;
+    --code-bg: #1C1917;
+    --code-border: #292524;
+    --table-stripe: #1C1917;
+    --table-header-bg: #292524;
+    --blockquote-bg: #1C1917;
+    --blockquote-border: #2DD4BF;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+    --done-bg: #052E16;
+    --done-text: #86EFAC;
+    --pending-bg: #451A03;
+    --pending-text: #FDE68A;
+    --deferred-bg: #292524;
+    --deferred-text: #A8A29E;
+  }
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Source Han Serif SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+  font-size: 16px; line-height: 1.8; color: var(--text); background-color: var(--bg);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 60px 32px 40px; }
+.doc-header { margin-bottom: 48px; padding-bottom: 32px; border-bottom: 2px solid var(--accent); }
+.doc-header h1 { font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--text); margin-bottom: 12px; letter-spacing: -0.01em; }
+.doc-header .subtitle { font-size: 15px; color: var(--text-secondary); font-style: italic; }
+h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 56px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; }
+h3 { font-size: 19px; font-weight: 600; color: var(--text); margin-top: 36px; margin-bottom: 14px; }
+h4 { font-size: 16px; font-weight: 600; color: var(--accent); margin-top: 28px; margin-bottom: 10px; }
+p { margin-bottom: 16px; color: var(--text-secondary); }
+strong { color: var(--text); font-weight: 600; }
+blockquote { margin: 24px 0; padding: 16px 24px; background: var(--blockquote-bg); border-left: 4px solid var(--blockquote-border); border-radius: 0 8px 8px 0; color: var(--text-secondary); font-style: italic; }
+blockquote p { margin-bottom: 0; }
+ul, ol { margin: 12px 0 20px 24px; color: var(--text-secondary); }
+li { margin-bottom: 6px; padding-left: 4px; }
+li strong { color: var(--text); }
+.table-wrapper { overflow-x: auto; margin: 20px 0 28px; border-radius: 8px; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; }
+thead { background: var(--table-header-bg); }
+th { padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text); border-bottom: 2px solid var(--accent); white-space: nowrap; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+tbody tr:hover { background: var(--accent-light); }
+code { font-family: "SF Mono", "Fira Code", "Cascadia Code", "Source Code Pro", monospace; font-size: 0.875em; background: var(--code-bg); border: 1px solid var(--code-border); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+pre { margin: 20px 0 28px; padding: 20px 24px; background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px; overflow-x: auto; box-shadow: var(--shadow); }
+pre code { background: none; border: none; padding: 0; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+hr { border: none; height: 1px; background: var(--border); margin: 48px 0; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+a:hover { border-bottom-color: var(--accent); }
+h2 .section-num { color: var(--accent); margin-right: 8px; }
+body::before { content: ""; display: block; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-dark), var(--accent)); }
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.status-done { background: var(--done-bg); color: var(--done-text); }
+.status-pending { background: var(--pending-bg); color: var(--pending-text); }
+.status-deferred { background: var(--deferred-bg); color: var(--deferred-text); }
+
+/* Roadmap visualization */
+.roadmap {
+  margin: 24px 0;
+  padding: 24px;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.roadmap-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 780px;
+  position: relative;
+}
+.roadmap-node {
+  flex: 1;
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  position: relative;
+}
+.roadmap-node .version {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.roadmap-node .label {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.roadmap-node.current {
+  background: var(--accent-light);
+  border: 2px solid var(--accent);
+}
+.roadmap-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 40px 16px 32px; }
+  .doc-header h1 { font-size: 26px; }
+  h2 { font-size: 20px; } h3 { font-size: 17px; }
+  table { font-size: 13px; } th, td { padding: 8px 10px; }
+}
+footer { text-align: center; padding: 60px 20px 40px; color: #9B9B9D; font-size: 13px; line-height: 2.2; }
+footer p { color: #9B9B9D; margin-bottom: 0; }
+footer .gen-note { font-size: 12px; margin-top: 8px; }
+@media print { body::before { display: none; } .container { max-width: 100%; padding: 20px; } table { font-size: 12px; } h2 { break-before: page; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>平台优化计划 -- 灵阙智能体平台 Demo</h1>
+  <p class="subtitle">平台优化与扩展计划 | v3.1 | 2026-03-13 | 性能目标、优化策略、未来路线图</p>
+</div>
+
+<!-- Section 1: 性能目标 -->
+
+<h2><span class="section-num">1.</span> 性能目标</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>指标</th><th>目标值</th><th>测量工具</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td>LCP (Largest Contentful Paint)</td><td>&lt; 2s</td><td>Lighthouse</td><td>演示场景下首屏加载必须快速，避免冷场</td></tr>
+<tr><td>FID (First Input Delay)</td><td>&lt; 100ms</td><td>Web Vitals</td><td>点击"运行"按钮必须即时响应</td></tr>
+<tr><td>CLS (Cumulative Layout Shift)</td><td>&lt; 0.1</td><td>Web Vitals</td><td>步骤动画展开时不能造成页面跳动</td></tr>
+<tr><td>Bundle Size</td><td>&lt; 500KB gzipped</td><td>Build output (<code>next build</code>)</td><td>保证弱网环境（会议室 Wi-Fi）也能快速加载</td></tr>
+<tr><td>Animation FPS</td><td>60fps</td><td>Chrome DevTools Performance</td><td>StepCard 动画必须流畅，不能卡顿</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Lighthouse 评分目标</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>类别</th><th>目标</th></tr></thead>
+<tbody>
+<tr><td>Performance</td><td>&gt;= 90</td></tr>
+<tr><td>Accessibility</td><td>&gt;= 90</td></tr>
+<tr><td>Best Practices</td><td>&gt;= 95</td></tr>
+<tr><td>SEO</td><td>&gt;= 80</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- Section 2: 优化策略 -->
+
+<h2><span class="section-num">2.</span> 优化策略</h2>
+
+<h3>2.1 代码拆分</h3>
+
+<pre><code>-- Dynamic import for ResultPanel (not needed until workflow completes)
+-- Dynamic import for IssueCard detail expansion
+-- Keep UploadZone and WorkflowPipeline in main bundle (critical path)</code></pre>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>组件</th><th>加载策略</th><th>触发时机</th></tr></thead>
+<tbody>
+<tr><td>UploadZone</td><td>Main bundle</td><td>Page load</td></tr>
+<tr><td>WorkflowPipeline</td><td>Main bundle</td><td>Page load</td></tr>
+<tr><td>BatchProgress</td><td>Main bundle</td><td>Phase enters <code>running</code></td></tr>
+<tr><td>ResultPanel</td><td>Dynamic import</td><td>Workflow complete event</td></tr>
+<tr><td>IssueCard</td><td>Dynamic import</td><td>ResultPanel render</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>2.2 图片优化</h3>
+<ul>
+  <li>使用 Next.js <code>&lt;Image&gt;</code> component 处理所有静态资源</li>
+  <li>Logo 和图标使用 SVG（矢量，无损缩放）</li>
+  <li>背景装饰元素使用 CSS gradients 替代图片</li>
+  <li>如需截图/示例图，使用 WebP 格式 + <code>srcSet</code> 多分辨率</li>
+</ul>
+
+<h3>2.3 动画性能</h3>
+
+<p>核心原则: 仅使用 GPU 加速属性，避免触发 layout/paint。</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>允许的属性</th><th>禁止的属性</th></tr></thead>
+<tbody>
+<tr><td><code>transform</code></td><td><code>width</code> / <code>height</code></td></tr>
+<tr><td><code>opacity</code></td><td><code>top</code> / <code>left</code> / <code>margin</code></td></tr>
+<tr><td><code>filter</code> (limited)</td><td><code>padding</code> / <code>border-width</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>实现方式:</p>
+<ul>
+  <li>StepCard 展开: <code>transform: scaleY()</code> + <code>opacity</code></li>
+  <li>Connector 动画: <code>stroke-dashoffset</code> (SVG) or <code>transform: scaleX()</code></li>
+  <li>Spinner: CSS <code>@keyframes rotate</code> with <code>transform: rotate()</code></li>
+  <li>使用 <code>will-change</code> 提示浏览器预分配 GPU 层（仅对动画中元素）</li>
+  <li><strong>Phase transitions</strong>: 使用 plain div conditional render 替代 AnimatePresence (D-015)。framer-motion 12 + React 19 下 AnimatePresence <code>mode="wait"</code> 的 exit/enter 序列化失效，改为即时切换 + 组件级动画 (stagger cards, animated counters, slide-in rows) 提供流畅体验</li>
+</ul>
+
+<h3>2.4 字体加载</h3>
+
+<p>系统字体栈，零网络字体下载:</p>
+
+<pre><code>font-family:
+  -apple-system, BlinkMacSystemFont,
+  "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
+  "Segoe UI", Roboto, "Helvetica Neue", Arial,
+  sans-serif;</code></pre>
+
+<ul>
+  <li>代码字体: <code>"SF Mono", "Fira Code", "Cascadia Code", monospace</code></li>
+  <li>不引入 Google Fonts 或其他 CDN 字体</li>
+</ul>
+
+<h3>2.5 SSE 处理</h3>
+
+<pre><code>fetch + ReadableStream configuration (actual):
+  - POST /api/audit with FormData (file + auditDate + fileIndex)
+  - ReadableStream reader with TextDecoder for SSE parsing
+  - Named event types: step_start | step_done | result | error | done
+  - AbortController for request cancellation on reset
+  - Per-file sequential processing in batch mode</code></pre>
+
+<p>关键实现要点:</p>
+<ul>
+  <li>使用 <code>fetch</code> + <code>ReadableStream</code> (非 EventSource): POST body 支持 + 命名 event types</li>
+  <li>AbortController: <code>abortRef.current?.abort()</code> 在 reset 时取消所有进行中的请求</li>
+  <li>SSE 解析: 按 <code>\n</code> 分割，检测 <code>event: </code> 和 <code>data: </code> 前缀，JSON.parse data</li>
+  <li>Dify 事件翻译: <code>node_started/node_finished</code> -&gt; <code>step_start/step_done</code> (via <code>matchStepByTitle</code>)</li>
+</ul>
+
+<hr>
+
+<!-- Section 3: 构建与包体分析 -->
+
+<h2><span class="section-num">3.</span> 构建与包体分析</h2>
+
+<h3>构建流水线</h3>
+
+<pre><code>pnpm build
+  -&gt; Next.js compiler (SWC)
+  -&gt; Tree shaking (unused exports)
+  -&gt; Code splitting (dynamic imports)
+  -&gt; Minification (Terser/SWC)
+  -&gt; Gzip/Brotli compression</code></pre>
+
+<h3>包体预算明细</h3>
+
+<h4>计划预算</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>Chunk</th><th>最大尺寸 (gzipped)</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>Main</td><td>150KB</td><td>React, Next.js runtime, core components</td></tr>
+<tr><td>Vendor</td><td>100KB</td><td>Tailwind CSS runtime, utilities</td></tr>
+<tr><td>WorkflowPipeline</td><td>80KB</td><td>StepCard, Connector, animation logic</td></tr>
+<tr><td>ResultPanel</td><td>100KB</td><td>IssueCard, formatting, expand/collapse</td></tr>
+<tr><td>Shared</td><td>70KB</td><td>Common utilities, types, constants</td></tr>
+<tr><td><strong>合计</strong></td><td><strong>&lt; 500KB</strong></td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>实际数据 (v2.1, Turbopack auto-split)</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>Chunk</th><th>原始尺寸</th><th>Gzipped</th><th>推测内容</th></tr></thead>
+<tbody>
+<tr><td>8b72cfc40036c827.js</td><td>219KB</td><td>68.5KB</td><td>Framer Motion + React runtime</td></tr>
+<tr><td>cf0395033399cc8b.js</td><td>185KB</td><td>56.2KB</td><td>App components (all phases)</td></tr>
+<tr><td>0a3176ca43c1cc1d.js</td><td>158KB</td><td>40.3KB</td><td>Next.js framework</td></tr>
+<tr><td>a6dad97d9634a72d.js</td><td>110KB</td><td>38.5KB</td><td>Lucide icons + utilities</td></tr>
+<tr><td>f158c7f222525f61.js</td><td>30KB</td><td>7.2KB</td><td>Shared lib (types, constants)</td></tr>
+<tr><td>a6cbfff8230b0019.js</td><td>13KB</td><td>4.8KB</td><td>Route config</td></tr>
+<tr><td>turbopack runtime</td><td>10KB</td><td>3.9KB</td><td>Chunk loader</td></tr>
+<tr><td><strong>合计</strong></td><td><strong>725KB</strong></td><td><strong>217KB</strong></td><td><strong>500KB 预算的 43%</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- Section 4: 未来增强计划 -->
+
+<h2><span class="section-num">4.</span> 未来增强计划</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>#</th><th>增强项</th><th>描述</th><th>复杂度</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><s>Batch Processing</s></td><td>100 文件批量上传+审核+仪表盘汇总</td><td>Medium</td><td><span class="status-badge status-done">DONE (v2.0)</span></td></tr>
+<tr><td>2</td><td><s>Dark Theme -&gt; Light Theme</s></td><td>v2.3 dark unification -&gt; v3.0 light mandatory</td><td>Medium</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>3</td><td><s>Dify API Integration</s></td><td>SSE streaming 对接真实工作流</td><td>Medium</td><td><span class="status-badge status-done">DONE (v2.2)</span></td></tr>
+<tr><td>4</td><td>Export to PDF Report</td><td>html2pdf 导出格式化审核报告</td><td>Medium</td><td><span class="status-badge status-pending">Pending</span></td></tr>
+<tr><td>5</td><td>OCR Scanning Animation</td><td>步骤 4 手写识别过程可视化</td><td>Medium</td><td><span class="status-badge status-pending">Pending</span></td></tr>
+<tr><td>6</td><td><s>Virtual Scrolling</s></td><td>100+ 文件列表 @tanstack/react-virtual</td><td>Low</td><td><span class="status-badge status-done">DONE (v2.0)</span></td></tr>
+<tr><td>7</td><td><s>History / Audit Trail</s></td><td>对话记录 + 决策审计追踪 (dual tab)</td><td>Medium</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>8</td><td><s>Workflow Editor</s></td><td>GoldenRatio 可视化编辑器 (展示模式)</td><td>High</td><td><span class="status-badge status-done">DONE (v3.0, read-only)</span></td></tr>
+<tr><td>9</td><td>Real-time Collaboration</td><td>多人同看演示</td><td>High</td><td><span class="status-badge status-deferred">Deferred</span></td></tr>
+<tr><td>10</td><td><s>n8n Node Flow Background</s></td><td>SVG 节点流动画</td><td>Low</td><td><span class="status-badge status-done">DONE (v2.2)</span></td></tr>
+<tr><td>11</td><td><s>SubDocument Recognition</s></td><td>6 types found/missing 网格</td><td>Low</td><td><span class="status-badge status-done">DONE (v2.2)</span></td></tr>
+<tr><td>12</td><td><s>Knowledge Base Management</s></td><td>KB 列表 + 状态 + 统计</td><td>Medium</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>13</td><td><s>Settings Panel</s></td><td>模型/数据/通知/安全 4 section</td><td>Medium</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>14</td><td><s>Template Gallery</s></td><td>Category tabs + 模板卡片</td><td>Low</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>15</td><td><s>Platform Sidebar</s></td><td>收缩式导航 + active indicator</td><td>Low</td><td><span class="status-badge status-done">DONE (v3.0)</span></td></tr>
+<tr><td>16</td><td>User Authentication</td><td>Login / RBAC / Token</td><td>High</td><td><span class="status-badge status-deferred">Deferred</span></td></tr>
+<tr><td>17</td><td>Database Persistence</td><td>PostgreSQL + Prisma ORM</td><td>High</td><td><span class="status-badge status-deferred">Deferred</span></td></tr>
+<tr><td>18</td><td>Knowledge CRUD</td><td>知识库创建/编辑/删除 + 文件上传</td><td>Medium</td><td><span class="status-badge status-pending">Pending</span></td></tr>
+<tr><td>19</td><td>Workflow CRUD</td><td>工作流创建/编辑/保存</td><td>High</td><td><span class="status-badge status-deferred">Deferred</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>路线图</h3>
+
+<div class="roadmap">
+<div class="roadmap-track">
+  <div class="roadmap-node">
+    <div class="version">v2.0</div>
+    <div class="label">Batch Demo<br>Glassmorphism<br>Copy/Export<br>Security</div>
+  </div>
+  <div class="roadmap-connector"></div>
+  <div class="roadmap-node">
+    <div class="version">v2.2</div>
+    <div class="label">Dify API<br>n8n BG<br>SubDoc Model<br>5 Mock Cases</div>
+  </div>
+  <div class="roadmap-connector"></div>
+  <div class="roadmap-node">
+    <div class="version">v2.3</div>
+    <div class="label">Dark Theme<br>Unification<br>SSR dark<br>Stitch</div>
+  </div>
+  <div class="roadmap-connector"></div>
+  <div class="roadmap-node current">
+    <div class="version">v3.0 (current)</div>
+    <div class="label">Platform Shell<br>8 Pages<br>Dual-color brand<br>Role Workflow SOP</div>
+  </div>
+  <div class="roadmap-connector"></div>
+  <div class="roadmap-node">
+    <div class="version">v3.5</div>
+    <div class="label">Auth + DB<br>KB Upload<br>OCR Animation<br>PDF Export</div>
+  </div>
+  <div class="roadmap-connector"></div>
+  <div class="roadmap-node">
+    <div class="version">v4.0</div>
+    <div class="label">Full CRUD<br>Drag-drop editor<br>Collab/WebSocket<br>Production deploy</div>
+  </div>
+</div>
+</div>
+
+<hr>
+
+<!-- Section 5: 部署选项 -->
+
+<h2><span class="section-num">5.</span> 部署选项</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>平台</th><th>优势</th><th>劣势</th><th>推荐场景</th></tr></thead>
+<tbody>
+<tr><td>Vercel</td><td>Zero config, edge functions, preview deployments</td><td>Cost at scale, vendor lock-in</td><td>快速迭代、演示环境</td></tr>
+<tr><td>Cloudflare Pages</td><td>Free tier generous, fast global CDN, Workers</td><td>Limited server-side functions, build limits</td><td>长期稳定部署、成本敏感</td></tr>
+<tr><td>Docker (self-hosted)</td><td>Self-hosted, air-gapped capable, full control</td><td>More ops work, need infra</td><td>国企内网部署、数据安全要求高</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>部署决策矩阵</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>场景</th><th>推荐平台</th></tr></thead>
+<tbody>
+<tr><td>开发和内部测试</td><td>Vercel (preview per PR)</td></tr>
+<tr><td>外部演示（互联网可达）</td><td>Vercel or CF Pages</td></tr>
+<tr><td>国企客户现场演示（内网）</td><td>Docker (air-gapped)</td></tr>
+<tr><td>长期 SaaS 化运营</td><td>CF Pages + Workers</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Docker 部署规格</h3>
+
+<pre><code># Multi-stage build
+FROM node:20-alpine AS builder
+# ... build steps ...
+
+FROM node:20-alpine AS runner
+# ... production image ...
+# Final image target: &lt; 200MB</code></pre>
+
+<p>环境变量:</p>
+<ul>
+  <li><code>DIFY_API_BASE_URL</code>: Dify API endpoint</li>
+  <li><code>DIFY_API_KEY</code>: Dify API key (runtime secret, never bake into image)</li>
+  <li><code>NEXT_PUBLIC_APP_TITLE</code>: 可自定义的应用标题</li>
+</ul>
+
+<hr>
+
+<!-- Section 6: 监控与可观测性 -->
+
+<h2><span class="section-num">6.</span> 监控与可观测性 (Production)</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>层级</th><th>工具</th><th>指标</th></tr></thead>
+<tbody>
+<tr><td>前端性能</td><td>Web Vitals API</td><td>LCP, FID, CLS, TTFB</td></tr>
+<tr><td>错误追踪</td><td>Sentry (or console fallback)</td><td>JS errors, SSE failures</td></tr>
+<tr><td>API 健康</td><td>Uptime check</td><td>Dify API availability</td></tr>
+<tr><td>使用分析</td><td>Plausible (privacy-first)</td><td>Page views, workflow runs</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- Changelog -->
+
+<h2>变更日志</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>日期</th><th>版本</th><th>变更内容</th></tr></thead>
+<tbody>
+<tr><td>2026-03-10</td><td>v1.0</td><td>初始优化计划</td></tr>
+<tr><td>2026-03-11</td><td>v2.3</td><td>Dify API + n8n background + dark theme done</td></tr>
+<tr><td>2026-03-12</td><td>v3.0</td><td><strong>平台迁移</strong>: 8 页面完成，路线图延伸至 v3.5/v4.0，新增 7 项增强 (#12-19)</td></tr>
+<tr><td>2026-03-13</td><td>v3.1</td><td><strong>动画优化 (D-015)</strong>: phase transitions 从 AnimatePresence 改为 plain div swaps，减少动画包体积；SubDocBar 可读性改进 (72px width, 6px height, bold 700 counts)</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<footer style="text-align:center; padding:60px 20px 40px; color:#9B9B9D; font-size:13px; line-height:2.2;">
+    <p>灵阙智能体平台 v3.1 -- 平台优化计划</p>
+    <p>Maurice | maurice_wen@proton.me</p>
+    <p style="font-size:12px; margin-top:8px;">Generated 2026-03-13 | Source: PLATFORM_OPTIMIZATION_PLAN.md v3.1</p>
+</footer>
+
+</body>
+</html>

@@ -41,8 +41,8 @@
   --text-secondary: #5F7A78;
   --text-muted: #7A8F8D;
   --bg-page: #FAFCFC;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-bright-bg: rgba(255, 255, 255, 0.92);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-bright-bg: rgba(255, 255, 255, 0.95);
   --glass-border: rgba(13, 148, 136, 0.15);
   --glass-bright-border: rgba(13, 148, 136, 0.22);
   --overlay-bg: rgba(250, 252, 252, 0.88);
@@ -83,6 +83,14 @@
   --accent-amber: #D97706;
   --accent-red: #DC2626;
   --accent-cyan: #0891B2;
+
+  /* Workflow step card backgrounds */
+  --wf-card-idle-opacity: 0.88;
+  --wf-card-active-bg: rgba(255, 255, 255, 0.95);
+  --wf-card-completed-bg: rgba(255, 255, 255, 0.9);
+  --wf-card-text-primary: #1E293B;
+  --wf-card-text-secondary: #475569;
+  --wf-card-text-muted: #94A3B8;
 }
 
 /* ===== DARK THEME ===== */
@@ -91,8 +99,8 @@
   --text-secondary: #94a3b8;
   --text-muted: #9CA3AF;
   --bg-page: #020617;
-  --glass-bg: rgba(15, 23, 42, 0.55);
-  --glass-bright-bg: rgba(30, 41, 59, 0.45);
+  --glass-bg: rgba(15, 23, 42, 0.82);
+  --glass-bright-bg: rgba(30, 41, 59, 0.85);
   --glass-border: rgba(13, 148, 136, 0.15);
   --glass-bright-border: rgba(13, 148, 136, 0.22);
   --overlay-bg: rgba(2, 6, 23, 0.85);
@@ -115,6 +123,13 @@
   --border: #334155;
   --input: #334155;
   --ring: #14B8A6;
+
+  /* Workflow step card backgrounds (dark) */
+  --wf-card-active-bg: rgba(30, 41, 59, 0.88);
+  --wf-card-completed-bg: rgba(30, 41, 59, 0.75);
+  --wf-card-text-primary: #E2E8F0;
+  --wf-card-text-secondary: #94A3B8;
+  --wf-card-text-muted: #64748B;
 }
 
 /* Dark theme body */
@@ -222,6 +237,30 @@
   50% { opacity: 1; }
 }
 
+/* ===== WORKFLOW PIPELINE ANIMATIONS ===== */
+@keyframes wfMarchH {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 0; }
+}
+@keyframes wfMarchV {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 16px; }
+}
+@keyframes wfGlow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(13,148,136,0.15), 0 0 0 3px rgba(13,148,136,0.08); }
+  50% { box-shadow: 0 12px 40px rgba(13,148,136,0.35), 0 0 0 5px rgba(13,148,136,0.18); }
+}
+@keyframes wfScan {
+  0% { transform: translateY(0); opacity: 0; }
+  8% { opacity: 0.6; }
+  92% { opacity: 0.6; }
+  100% { transform: translateY(280px); opacity: 0; }
+}
+@keyframes wfShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* ===== WORKFLOW NODE FLOW ===== */
 @keyframes flowDash {
   0% { stroke-dashoffset: 0; }
@@ -257,27 +296,20 @@
   50% { filter: drop-shadow(0 0 16px rgba(13, 148, 136, 0.6)); }
 }
 
-/* ===== GLASSMORPHISM ===== */
+/* ===== GLASSMORPHISM =====
+   backdrop-filter removed: GPU cost ∝ area × radius², and large panels (>500K px)
+   at ≥90% bg opacity gain negligible visual benefit from blur. Solid bg + border +
+   box-shadow provide the "glass" feel without GPU stall. */
 .glass {
   background: var(--glass-bg);
-  --tw-backdrop-blur: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: var(--tw-backdrop-blur);
   border: 1px solid var(--glass-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(13, 148, 136, 0.06);
-  will-change: transform; /* H3: GPU compositing for backdrop-filter */
-  transform: translateZ(0);
 }
 
 .glass-bright {
   background: var(--glass-bright-bg);
-  --tw-backdrop-blur: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: var(--tw-backdrop-blur);
   border: 1px solid var(--glass-bright-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.05), 0 0 0 0.5px rgba(13, 148, 136, 0.08);
-  will-change: transform; /* H3: GPU compositing for backdrop-filter */
-  transform: translateZ(0);
 }
 
 /* ===== GLOW EFFECTS ===== */
@@ -459,13 +491,9 @@
 /* ===== REDUCED TRANSPARENCY ===== */
 @media (prefers-reduced-transparency: reduce) {
   .glass {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     background: rgba(250, 252, 252, 0.97);
   }
   .glass-bright {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     background: rgba(255, 255, 255, 0.97);
   }
 }
@@ -474,6 +502,22 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ===== PLATFORM ENTERPRISE BLUE ===== */
+.platform-glow { box-shadow: 0 0 30px rgba(2, 132, 199, 0.3), 0 0 80px rgba(2, 132, 199, 0.1); }
+[data-theme="dark"] .platform-glow { box-shadow: 0 0 30px rgba(2, 132, 199, 0.3), 0 0 80px rgba(2, 132, 199, 0.1); }
+.text-glow-platform { text-shadow: 0 0 28px rgba(2, 132, 199, 0.7), 0 0 60px rgba(2, 132, 199, 0.35); }
+:root .text-glow-platform { text-shadow: 0 1px 2px rgba(2, 132, 199, 0.2); }
+[data-theme="dark"] .text-glow-platform { text-shadow: 0 0 28px rgba(2, 132, 199, 0.7), 0 0 60px rgba(2, 132, 199, 0.35); }
+.logo-glow-platform { animation: logoGlowPlatform 3s ease-in-out infinite; }
+@keyframes logoGlowPlatform {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(2, 132, 199, 0.3)); }
+  50% { filter: drop-shadow(0 0 16px rgba(2, 132, 199, 0.6)); }
+}
+
+/* ===== SCROLLBAR HIDE (for horizontal scroll sections) ===== */
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 
 /* ===== RESPONSIVE 100VH ===== */
 @supports (height: 100dvh) {
