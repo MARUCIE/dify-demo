@@ -27,11 +27,34 @@ export interface AuditIssue {
 
 export type AuditSuggestion = '通过' | '人工复核' | '不通过';
 
+// Sub-document identified after splitting a merged PDF
+export interface SubDocument {
+  type: string;        // e.g. '费用报销单', '公务接待审批单', '电子发票'
+  found: boolean;      // whether this document was found in the PDF
+  page?: number;       // starting page number in the merged PDF
+  pageCount?: number;  // how many pages this sub-document spans
+  derived?: boolean;   // true when inferred from issues (not from Dify API)
+}
+
+// Standard sub-document types for SRBG reimbursement packages
+export const SUB_DOC_TYPES = [
+  '费用报销单',
+  '公务接待审批单',
+  '公务接待清单',
+  '情况说明',
+  '电子发票',
+  '菜品清单',
+] as const;
+
 export interface AuditResult {
   receptionType: string;
   suggestion: AuditSuggestion;
   issues: AuditIssue[];
-  totalDuration: number; // seconds
+  totalDuration: number;       // seconds
+  subDocuments?: SubDocument[]; // documents identified in the merged PDF
+  amount?: number;             // total reimbursement amount (元)
+  pageCount?: number;          // total pages in the PDF
+  aiSummary?: string;          // AI-generated per-file summary (from Dify or client-side)
 }
 
 // -- v2.0 Batch types --
@@ -55,6 +78,12 @@ export interface BatchFile {
 export interface BatchSummary {
   totalFiles: number;
   completed: number;
+  // Sub-document level counts (primary display)
+  totalSubDocs: number;
+  subDocPassed: number;
+  subDocNeedsReview: number;
+  subDocRejected: number; // includes missing
+  // File level counts (secondary, for table rows)
   passed: number;
   needsReview: number;
   rejected: number;

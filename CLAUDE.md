@@ -11,7 +11,7 @@
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Styling**: TailwindCSS 4 + shadcn/ui
 - **Animation**: Framer Motion
 - **Icons**: Lucide React
@@ -59,7 +59,9 @@ All docs: `doc/00_project/initiative_21-dify-demo/`
 
 ## Source Project
 
-Scaffolded from `07-lingque-professional` B-end. Stripped to minimal shell.
+Current runtime entrypoints:
+- `/` -> `src/app/page.tsx`
+- `/api/audit` -> `src/app/api/audit/route.ts`
 
 ---
 

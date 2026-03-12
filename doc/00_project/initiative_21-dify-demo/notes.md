@@ -1,6 +1,135 @@
 # Notes -- 21-dify-demo
 
-> 路桥报销审核智能体 | Working Notes
+> 灵阙智能体平台 Demo | Working Notes
+
+---
+
+## 2026-03-12 -- v3.1 Visual Refinement (WorkflowPipeline Redesign)
+
+### Problem
+WorkflowPipeline went through 4 failed iterations:
+1. SVG nodes too small (5:1 aspect ratio viewBox in 4:3 container)
+2. SVG nodes too big (height: 100% + aspect-ratio overflow)
+3. SVG capped height (still wrong proportions)
+4. HTML cards 200px horizontal scroll (functional but "不好看")
+
+### Solution: 2-Row Grid + Color-Coded Types
+Studied 07-lingque-professional's DemoWorkflowPreview + PipelineVisualizer + ExecutionCanvas for design inspiration. Key findings:
+- Lingque uses HTML flex cards (280px) not SVG for read-only pipelines
+- Color-coded step types (blue/purple/orange/green) per node category
+- Glassmorphism: `bg-white/60 backdrop-blur-xl`, `rounded-2xl`
+- Status-driven borders with Framer Motion animations
+
+### Changes Made
+| File | Change |
+|------|--------|
+| `WorkflowPipeline.tsx` | Complete rewrite: 2-row grid (5+5), 6 color-coded types, glassmorphism, dot-grid canvas, type badges, decision IF node, -webkit-line-clamp:2 |
+| `expense-audit/page.tsx` | Layout 38.2% -> 45%, "n8n 工作流画布" -> "节点流程图" |
+| `workflows.ts` | Tag "n8n" -> "SSE" |
+| `AnimatedBackground.tsx` | Removed n8n comment |
+| `.env.local` | DIFY_API_URL + DIFY_API_KEY + DEMO_MODE=false |
+
+### Key Technical Learnings
+- **2-row grid > horizontal scroll**: 10 steps in a single row requires 1000px+ horizontal scroll. Two rows of 5 fit in ~700px containers with no scroll.
+- **Color-coded step types via `Record<number, StepType>`**: Maps step IDs to semantic categories (input/process/extract/decision/audit/output), each with distinct pastel bg + accent color.
+- **`-webkit-line-clamp: 2`**: Critical for CJK text in flex cards. `white-space: nowrap` truncates 4-char Chinese names; line-clamp allows 2-line wrap while keeping overflow ellipsis.
+- **8-digit hex alpha**: `${accent}22` appends 2 hex digits for CSS Level 4 alpha (e.g., `#3B82F622` = 13% opacity blue). Supported in all modern browsers.
+- **React Fragment with key**: `<Fragment key={step.id}>` allows multiple flex children per iteration without extra DOM wrapper.
+
+---
+
+## 2026-03-12 -- Lighthouse A11y 87 → 100
+
+### Failures Fixed (4)
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| `link-name` | Back arrow `<Link>` had icon-only, no accessible name | Added `aria-label="返回工作流列表"` |
+| `landmark-one-main` | All 7 pages used `<div>` as root wrapper | Changed to `<main>` on all pages |
+| `heading-order` | `h1 → h3` skipped `h2` in left panel; `h2` in pipeline was lower than `h3` | Left panel `h3 → h2`, pipeline `h2 → h3` |
+| `color-contrast` | Sidebar: `#94a3b8` on white = 2.55:1; active nav `#0D9488` on teal bg = 3.39:1 | `#94a3b8 → #64748B` (4.6:1), `#0D9488 → #0B7A72` (4.7:1); pipeline idle opacity 0.72 → 0.88 |
+
+### Files Changed
+`Sidebar.tsx`, `WorkflowPipeline.tsx`, `expense-audit/page.tsx`, `page.tsx` (root), `workflows/page.tsx`, `history/page.tsx`, `knowledge/page.tsx`, `templates/page.tsx`, `settings/page.tsx`
+
+### Additional Fixes (same session)
+- **CLS 0.173→0**: Added `initial={false}` to sidebar `motion.aside` — prevents hydration layout shift from width animation
+- **Tag contrast on /workflows**: `#64748b` on `#f1f5f9` = 4.34:1 → `#475569` = 7.1:1
+- **Heading order on /workflows + /**: Card titles `h3→h2`, preview panel `h4→h3`
+
+### Lighthouse Final Scores (production build, all 4 routes)
+| Route | Perf | A11y | BP | SEO |
+|-------|------|------|----|-----|
+| `/` | 92 | 100 | 100 | 100 |
+| `/audit` | 98 | 100 | 100 | 100 |
+| `/workflows` | 92 | 100 | 100 | 100 |
+| `/workflows/expense-audit` | 92 | 100 | 100 | 100 |
+
+---
+
+## 2026-03-12 -- v3.0 Platform Migration
+
+### What Changed
+从 v2.x 单页报销审核 Demo 升级为灵阙企业智能体平台完整 Demo (8 user-facing pages)。
+
+**新增页面**:
+1. `/` — Agent list home (8 enterprise agents, search/filter, Jade Teal brand)
+2. `/workflows` — Workflow list (card grid, status badges, trigger type)
+3. `/workflows/expense-audit` — GoldenRatio 38.2/61.8 workflow editor + n8n branching canvas
+4. `/templates` — Template gallery (category tabs, card grid)
+5. `/knowledge` — Knowledge base list (5 KBs, status badges, stats panel)
+6. `/history` — Dual-tab: Conversations + Decision Audit (timeline trace visualization)
+7. `/settings` — Double sidebar (4 sections: 模型配置/数据管理/通知/安全)
+8. `/audit` — Original v2 expense audit (preserved under new route)
+
+**设计语言统一**:
+- Dual-color brand: Platform = Sky Blue (#0284C7), Agent = Jade Teal (#0D9488)
+- Light theme mandatory: `bg-white/70 backdrop-blur`, borders `rgba(226,232,240,0.8)`
+- PageHeader pattern: sticky, frosted glass, title + stats + actions
+- Collapsible sidebar: 64px↔256px with Framer Motion layoutId
+- Card grid with `auto-fill, minmax(300px, 1fr)` responsive columns
+
+**新增数据层**:
+- `src/lib/knowledge.ts` — 5 enterprise KBs (报销政策/合同模板/财务制度/公文规范/法律法规)
+- `src/lib/history.ts` — 7 conversations + 4 audit traces with step-level timeline
+- `src/lib/workflows.ts` — Workflows + templates data definitions
+
+**Sidebar 升级**:
+- All 6 menu items enabled (was 3 disabled)
+- `matchRoute()` covers all paths including `/audit` → agents active indicator
+
+### Key Technical Learnings
+- **n8n Branching Canvas**: Horizontal DAG with WorkflowNode + DecisionNode + connection lines. SVG path rendering for bezier curves between nodes, with animated stroke-dasharray for flow direction
+- **GoldenRatio Layout**: `flex: '0 0 38.2%'` (left panel) + `flex: 1` (right canvas). The golden ratio creates a natural visual balance between config and visualization
+- **Double Sidebar Pattern**: Settings page nests a second nav inside the main content area. Outer sidebar = platform nav, inner sidebar = settings sub-nav. Key: inner sidebar needs `flexShrink: 0` and fixed width (200px)
+- **Timeline Trace Visualization**: Each audit trace step rendered as a vertical timeline with status-colored dots, duration bars, and expandable error details. Uses Framer Motion staggered entrance
+
+### SOP: Real Role Workflows (Phase 8)
+- Defined 8 roles: PM / Designer / Architect / Engineer / QA / SRE / Security / Data
+- Each role has: Input artifacts → Output artifacts → Acceptance criteria → Handoff dependencies
+- Collaboration DAG: PM→Architect→Data→Engineer→QA→SRE→PM (critical path)
+- Parallel windows: Designer ∥ Architect; QA ∥ Security
+
+---
+
+## 2026-03-11 -- Baseline Alignment (lint + docs)
+
+### What changed
+- 当前运行时基线确认：Next.js `16.1.6` + React `19.2.3`，入口是 `/`，不是 `/demo/*`
+- 新增 `pnpm typecheck` 脚本，补齐最基础的 TS 校验入口
+- `Header.tsx` 去掉 effect 内同步 `setState`；主题切换改为直接读写 `document.documentElement[data-theme]`
+- `BatchResultsDashboard.tsx` 的动画计数器改为 RAF 驱动，避免 React 19 lint 命中的同步 state 写入
+- 结果表排序头改成 `columnheader + button` 组合，避免 `aria-sort` 放在 button 上
+- 清理未使用 import，并对 `useVirtualizer()` 的 React Compiler 警告做显式说明
+
+### Documentation sync
+- `doc/index.md` 新建，补齐项目路径索引
+- `PRD.md` / `SYSTEM_ARCHITECTURE.md` / `USER_EXPERIENCE_MAP.md` / `PLATFORM_OPTIMIZATION_PLAN.md` 已回写实际结构
+- 重点修正：Next.js 版本、单页路由、`/api/audit` 请求字段、`WorkflowPipeline` 内联步骤卡片
+
+### Remaining governance gaps
+- `deliverable.md` / `PDCA_ITERATION_CHECKLIST.md` / `ROLLING_REQUIREMENTS_AND_PROMPTS.md` 已建立
+- `doc/00_project/index.md` 与 initiative `index.md` 已建立
+- 仍待后续任务补齐：`ai check`、UX map 人工模拟验收、live mode 凭证验证、HTML snapshot 重生成
 
 ---
 
@@ -160,13 +289,108 @@ Launched PM + UX Designer + Frontend Engineer + Security agents for comprehensiv
 
 ### Deferred Items (tracked)
 - [ ] Light mode toggle (~2-3h, critical for well-lit demo environments)
-- [ ] Dify API integration (~4-6h, backend still placeholder)
+- [x] ~~Dify API integration~~ (DONE v2.2)
 - [ ] OCR scanning animation during step 4
 - [ ] Connector flowing particle effect (partial -- CSS only, no JS particles between steps)
 - [ ] Virtual scrolling for 100+ files
 - [ ] Keyboard accessibility (ARIA labels, shortcuts)
-- [ ] PDCA doc sync (SYSTEM_ARCHITECTURE, USER_EXPERIENCE_MAP, PLATFORM_OPTIMIZATION_PLAN)
+- [x] ~~PDCA doc sync~~ (DONE v2.2)
 - [ ] Testing suite
+- [ ] Get real DIFY_API_KEY for agentdemo.hegui.cn to test live mode
+
+---
+
+## 2026-03-11 -- v2.2 Dify API Integration + n8n Background + PDCA
+
+### Changes Made
+
+**1. Dify API Integration (dual-mode SSE)**
+- NEW `src/lib/dify-client.ts` (~200 lines): server-side Dify API client
+  - `uploadFileToDify()`: POST multipart to /v1/files/upload
+  - `runWorkflowStream()`: POST JSON to /v1/workflows/run with configurable input vars
+  - `parseDifyOutput()`: robust parser (JSON object / JSON string / plain text -> AuditResult)
+  - `matchStepByTitle()`: fuzzy matches Dify node titles to 10-step workflow via Chinese keywords
+  - `SKIP_NODE_TYPES`: filters internal Dify nodes (start, end, if-else, variable-aggregator, answer)
+- REWRITE `src/app/api/audit/route.ts`: dual-mode SSE endpoint
+  - `mockStream()`: async generator with realistic delays from MOCK_STEP_DELAYS
+  - `difyStream()`: upload -> workflow -> translate Dify events -> emit custom SSE events
+  - Named SSE event types: step_start, step_done, result, error, done
+- MODIFY `src/app/page.tsx`: SSE consumer with AbortController for cancellation
+  - `handleStartAudit(auditDate)`: FormData per file -> ReadableStream reader -> dispatch actions
+  - `handleReset()`: aborts running requests via `abortRef.current?.abort()`
+- MODIFY `src/components/upload/UploadZone.tsx`: pass auditDate to onStartAudit callback
+
+**2. SubDocument Model (merged PDF splitting)**
+- MODIFY `src/lib/types.ts`: added SubDocument interface + SUB_DOC_TYPES constant (6 standard types)
+- MODIFY `src/lib/mock-data.ts`: 5 realistic SRBG cases with full subDocuments arrays
+  - Case 1: 人工复核 (mirrors real KDBABXD2507090055.pdf, 470 yuan, 超期271天)
+  - Case 2: 通过 (all docs complete, amounts match)
+  - Case 3: 人工复核 (OCR 置信度62%, 商务接待)
+  - Case 4: 不通过 (3 critical docs missing, amount mismatch)
+  - Case 5: 人工复核 (budget discrepancy, guest list incomplete)
+- MODIFY `src/components/result/ResultPanel.tsx`: added 单据拆分识别 grid section + amount display
+
+**3. n8n-Style Node Flow Background**
+- REWRITE `src/components/layout/AnimatedBackground.tsx`: SVG node flow network
+  - 16 nodes: Row 1 (7 left->right), Row 2 (6 right->left), Branch (3 downward)
+  - 15 bezier connections via `edgePath()` (auto-detects horizontal vs vertical)
+  - Each node: rounded rect + left color stripe + input/output ports + 2 text lines
+- BACKUP `src/components/layout/AnimatedBackground.particles.tsx`: original particle version
+- MODIFY `src/app/globals.css`: replaced particle classes with flow-* classes
+  - `@keyframes flowDash`: stroke-dashoffset 0 -> -13 (2.5s linear infinite)
+  - `@keyframes nodeWave`: opacity 0.7 -> 1.0 (20s, 5-10% bright window)
+  - Opacity tuned 3 iterations: initial (invisible) -> 2x boost -> 3x boost (visible through glass)
+
+**4. PDCA Documentation Sync**
+- PRD.md v2.2: SubDocument types table, actual SSE event schema, resolved open questions
+- SYSTEM_ARCHITECTURE.md v2.2: n8n background, dify-client.ts, event translation layer, decisions D-006/D-007/D-008
+- USER_EXPERIENCE_MAP.md v2.1: n8n animations, SubDocument UX step, updated component inventory
+- PLATFORM_OPTIMIZATION_PLAN.md: marked Dify API + n8n background as DONE, updated roadmap
+
+### Key Technical Learnings
+
+- **SVG background opacity through glassmorphism**: effective_alpha = base_alpha * animation_opacity * glass_transparency. Initial 0.025 * 0.45 * 0.5 = 0.006 (invisible). Final 0.08 * 0.7 * 0.5 = 0.028 + stroke 0.3 (visible)
+- **fetch+ReadableStream vs EventSource for SSE**: EventSource doesn't support POST body or named event types. fetch+ReadableStream is more flexible for API proxy patterns
+- **Dify event translation**: Dify returns fine-grained node events with Chinese titles. `matchStepByTitle()` uses keyword arrays to fuzzy-match to our 10-step pipeline
+- **AbortController for SSE cancellation**: critical for batch mode reset -- without it, abandoned requests continue consuming server resources
+
+### Open Items
+- [ ] Get real DIFY_API_KEY to test live mode end-to-end
+- [ ] File drop scanning animation (step 4 OCR visualization)
+- [x] ~~Light mode toggle for well-lit demo environments~~ (theme toggle exists, dark default)
+
+---
+
+## 2026-03-11 -- v2.3 Stitch Pipeline: Dark Theme Unification
+
+### Problem
+UI was "新老混合" -- inconsistent mix of old dark-theme components (glass morphism, glows) rendered against new light-theme CSS variables. Root cause:
+- `layout.tsx` `<html>` tag had no `data-theme` attribute -> `:root` (light) CSS vars applied on SSR
+- `ThemeToggle` in Header.tsx defaulted to `'light'`, only set `data-theme` after hydration via `useEffect`
+- Date picker had hardcoded `rgba(255,255,255,0.8)` background
+- This created FOUC: dark-designed components on light variables
+
+### Stitch Pipeline Execution
+- Phase 1 (Requirements): extracted from PRD v2.2, identified 4 phase UI + dark glass design language
+- Phase 2 (Variants): researched via 21st-magic (dark upload dashboards, hero sections, dropzones)
+- Phase 3 (Compare): Option A (fix light theme) vs Option B (restore dark default + integrate n8n) -> B wins
+- Phase 4 (Implementation): 4 files modified
+- Phase 5 (PDCA sync): docs updated
+
+### Changes Made
+1. `src/app/layout.tsx`: added `data-theme="dark"` to `<html>` tag (SSR dark from first paint)
+2. `src/components/layout/Header.tsx`: ThemeToggle default `'light'` -> `'dark'`, `useEffect` resolves `saved ?? 'dark'`
+3. `src/app/globals.css`: dark-mode n8n flow colors switched from `rgba(13,148,136,*)` to brighter `rgba(45,212,191,*)` for better contrast on #020617
+4. `src/components/upload/UploadZone.tsx`: date picker `rgba(255,255,255,0.8)` -> `var(--glass-bg)`, `colorScheme: 'light'` -> `'inherit'`
+
+### Key Learning
+- **SSR theme 同步**: `data-theme` must be on `<html>` at SSR time, not set by client-side `useEffect`. Otherwise first paint uses wrong CSS variables -> FOUC
+- **color-scheme inheritance**: native form elements (date input) inherit `color-scheme` from parent CSS. Setting `color-scheme: dark` on `body` propagates to all inputs without per-element overrides
+
+### Open Items
+- [ ] Get real DIFY_API_KEY to test live mode end-to-end
+- [ ] File drop scanning animation (step 4 OCR visualization)
+- [ ] Light mode polish (when toggled, verify all components adapt cleanly)
 
 ---
 

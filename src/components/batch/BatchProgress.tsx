@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import type { BatchFile, WorkflowStepDef } from '@/lib/types';
 import { SUGGESTION_BADGE } from '@/lib/constants';
+import { DURATION, EASE_DEFAULT } from '@/lib/animations';
+import AuditLog from './AuditLog';
 
 // -- Props --
 
@@ -37,7 +39,7 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
         cy={center}
         r={radius}
         fill="none"
-        stroke="rgba(51,65,85,0.4)"
+        stroke="rgba(209,224,222,0.4)"
         strokeWidth={strokeWidth}
       />
       {/* Progress arc */}
@@ -52,7 +54,7 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
         strokeDasharray={circumference}
         initial={{ strokeDashoffset: circumference }}
         animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
+        transition={{ duration: DURATION.slower, ease: 'easeOut' }}
         style={{
           transform: 'rotate(-90deg)',
           transformOrigin: '50% 50%',
@@ -61,8 +63,8 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
       {/* Gradient definition */}
       <defs>
         <linearGradient id="circularGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="100%" stopColor="#7c3aed" />
+          <stop offset="0%" stopColor="#0D9488" />
+          <stop offset="100%" stopColor="#0891B2" />
         </linearGradient>
       </defs>
       {/* Center text */}
@@ -74,7 +76,7 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
         style={{
           fontSize: 16,
           fontWeight: 800,
-          fill: '#e2e8f0',
+          fill: 'var(--text-primary)',
           fontFamily: 'Inter, -apple-system, sans-serif',
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -88,7 +90,7 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
         dominantBaseline="central"
         style={{
           fontSize: 9,
-          fill: '#94a3b8',
+          fill: 'var(--text-secondary)',
           fontFamily: 'Inter, -apple-system, sans-serif',
         }}
       >
@@ -102,10 +104,10 @@ function CircularProgress({ percent, size, strokeWidth }: CircularProgressProps)
 
 function dotColor(status: 'idle' | 'active' | 'completed' | 'error'): string {
   switch (status) {
-    case 'completed': return '#4ade80';
-    case 'active': return '#3b82f6';
-    case 'error': return '#f87171';
-    default: return '#334155';
+    case 'completed': return '#059669';
+    case 'active': return '#0D9488';
+    case 'error': return '#DC2626';
+    default: return 'rgba(13,148,136,0.15)';
   }
 }
 
@@ -134,16 +136,16 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
       initial={{ opacity: 0, x: -24, scale: 0.97 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 20, scale: 0.97 }}
-      transition={{ duration: 0.45, delay: index * 0.07, ease: [0.4, 0, 0.2, 1] as const }}
+      transition={{ duration: 0.45, delay: index * 0.07, ease: EASE_DEFAULT }}
       className={`glass rounded-xl p-4 ${isActive ? 'glow-blue' : ''}`}
       style={{
         marginBottom: 8,
         borderLeft: isActive
-          ? '3px solid #3b82f6'
+          ? '3px solid #0D9488'
           : file.status === 'completed'
-            ? '3px solid #4ade80'
+            ? '3px solid #059669'
             : file.status === 'error'
-              ? '3px solid #f87171'
+              ? '3px solid #DC2626'
               : '3px solid transparent',
         position: 'relative',
         overflow: 'hidden',
@@ -161,9 +163,9 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
           }}
           animate={{
             boxShadow: [
-              'inset 0 0 24px rgba(59,130,246,0.06), 0 0 24px rgba(59,130,246,0.12)',
-              'inset 0 0 40px rgba(59,130,246,0.14), 0 0 50px rgba(59,130,246,0.22)',
-              'inset 0 0 24px rgba(59,130,246,0.06), 0 0 24px rgba(59,130,246,0.12)',
+              'inset 0 0 24px rgba(13,148,136,0.06), 0 0 24px rgba(13,148,136,0.12)',
+              'inset 0 0 40px rgba(13,148,136,0.14), 0 0 50px rgba(13,148,136,0.22)',
+              'inset 0 0 24px rgba(13,148,136,0.06), 0 0 24px rgba(13,148,136,0.12)',
             ],
           }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -179,12 +181,12 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
             height: 36,
             borderRadius: 10,
             background: isActive
-              ? 'rgba(59,130,246,0.15)'
+              ? 'rgba(13,148,136,0.12)'
               : file.status === 'completed'
-                ? 'rgba(34,197,94,0.1)'
+                ? 'rgba(5,150,105,0.08)'
                 : file.status === 'error'
-                  ? 'rgba(239,68,68,0.1)'
-                  : 'rgba(51,65,85,0.5)',
+                  ? 'rgba(220,38,38,0.08)'
+                  : 'rgba(13,148,136,0.06)',
           }}
         >
           {file.status === 'completed' ? (
@@ -193,19 +195,19 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
             >
-              <CheckCircle size={18} color="#4ade80" strokeWidth={2} />
+              <CheckCircle size={18} color="#059669" strokeWidth={2} />
             </motion.div>
           ) : file.status === 'error' ? (
-            <XCircle size={18} color="#f87171" strokeWidth={2} />
+            <XCircle size={18} color="#DC2626" strokeWidth={2} />
           ) : isActive ? (
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             >
-              <Loader2 size={18} color="#60a5fa" strokeWidth={2} />
+              <Loader2 size={18} color="#0D9488" strokeWidth={2} />
             </motion.div>
           ) : (
-            <FileText size={18} color="#94a3b8" strokeWidth={2} />
+            <FileText size={18} color="var(--text-muted)" strokeWidth={2} />
           )}
         </div>
 
@@ -216,10 +218,10 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
               fontSize: 13,
               fontWeight: 600,
               color: isActive
-                ? '#e2e8f0'
+                ? 'var(--text-primary)'
                 : file.status === 'queued'
-                  ? '#94a3b8'
-                  : '#e2e8f0',
+                  ? 'var(--text-muted)'
+                  : 'var(--text-primary)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -232,7 +234,7 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              style={{ fontSize: 11, color: '#60a5fa', marginTop: 2 }}
+              style={{ fontSize: 11, color: '#0D9488', marginTop: 2 }}
             >
               <span className="typing-cursor">
                 步骤 {file.currentStep}/{totalSteps} -- {activeStepDef.name}
@@ -240,12 +242,12 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
             </motion.p>
           )}
           {file.status === 'completed' && file.result && (
-            <p style={{ fontSize: 11, color: '#4ade80', marginTop: 2 }}>
+            <p style={{ fontSize: 11, color: '#059669', marginTop: 2 }}>
               耗时 {file.result.totalDuration.toFixed(1)}s · {file.result.issues.length} 个问题
             </p>
           )}
           {file.status === 'error' && file.error && (
-            <p style={{ fontSize: 11, color: '#f87171', marginTop: 2 }}>
+            <p style={{ fontSize: 11, color: '#DC2626', marginTop: 2 }}>
               {file.error}
             </p>
           )}
@@ -264,7 +266,7 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
                   height: '100%',
                   borderRadius: 2,
                   background: file.status === 'completed'
-                    ? 'linear-gradient(90deg, #059669, #4ade80)'
+                    ? 'linear-gradient(90deg, #059669, #059669)'
                     : undefined,
                 }}
               />
@@ -317,9 +319,9 @@ function FileCard({ file, index, isActive, steps, totalSteps }: FileCardProps) {
               style={{
                 fontSize: 11,
                 padding: '4px 10px',
-                background: 'rgba(51,65,85,0.5)',
+                background: 'var(--glass-bg)',
                 color: 'var(--text-secondary)',
-                border: '1px solid rgba(71,85,105,0.3)',
+                border: '1px solid rgba(13,148,136,0.3)',
               }}
             >
               <Clock size={11} strokeWidth={2} />
@@ -382,12 +384,6 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
   // Active file index (first processing file)
   const activeFileIndex = files.findIndex(f => f.status === 'processing');
 
-  // Active file step detail
-  const activeFile = activeFileIndex >= 0 ? files[activeFileIndex] : null;
-  const activeStepDef = activeFile && activeFile.currentStep > 0
-    ? steps[activeFile.currentStep - 1]
-    : null;
-
   // Status label
   const statusLabel = processingCount > 0
     ? '审核中'
@@ -400,7 +396,7 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
       className="h-full flex flex-col"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] as const }}
+      transition={{ duration: DURATION.slower, ease: EASE_DEFAULT }}
     >
       {/* -- Section header with overall progress -- */}
       <div className="flex items-center justify-between mb-3 shrink-0">
@@ -412,12 +408,12 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
             <h2 style={{ fontSize: 18, fontWeight: 700 }}>批量处理进度</h2>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               已完成{' '}
-              <span className="stat-number" style={{ color: '#60a5fa', fontWeight: 700 }}>
+              <span className="stat-number" style={{ color: '#0D9488', fontWeight: 700 }}>
                 {completedCount}/{totalCount}
               </span>
               {' '}个文件
               <span style={{ color: 'var(--text-muted)', margin: '0 6px' }}>·</span>
-              <span style={{ color: '#60a5fa' }}>
+              <span style={{ color: '#0D9488' }}>
                 {Math.round(overallPercent)}%
               </span>
               {' '}{statusLabel}
@@ -429,35 +425,35 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
         <div className="flex items-center gap-5">
           {completedCount > 0 && (
             <div className="flex items-center gap-2">
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#059669' }} />
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                完成 <span className="stat-number" style={{ fontWeight: 700, color: '#4ade80' }}>{completedCount}</span>
+                完成 <span className="stat-number" style={{ fontWeight: 700, color: '#059669' }}>{completedCount}</span>
               </span>
             </div>
           )}
           {processingCount > 0 && (
             <div className="flex items-center gap-2">
               <motion.div
-                style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: '#0D9488' }}
                 animate={{
                   boxShadow: [
-                    '0 0 3px rgba(59,130,246,0.4)',
-                    '0 0 10px rgba(59,130,246,0.8)',
-                    '0 0 3px rgba(59,130,246,0.4)',
+                    '0 0 3px rgba(13,148,136,0.4)',
+                    '0 0 10px rgba(13,148,136,0.8)',
+                    '0 0 3px rgba(13,148,136,0.4)',
                   ],
                 }}
                 transition={{ duration: 1.5, repeat: Infinity }}
               />
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                处理中 <span className="stat-number" style={{ fontWeight: 700, color: '#60a5fa' }}>{processingCount}</span>
+                处理中 <span className="stat-number" style={{ fontWeight: 700, color: '#0D9488' }}>{processingCount}</span>
               </span>
             </div>
           )}
           {errorCount > 0 && (
             <div className="flex items-center gap-2">
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f87171' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626' }} />
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                失败 <span className="stat-number" style={{ fontWeight: 700, color: '#f87171' }}>{errorCount}</span>
+                失败 <span className="stat-number" style={{ fontWeight: 700, color: '#DC2626' }}>{errorCount}</span>
               </span>
             </div>
           )}
@@ -470,102 +466,37 @@ export default function BatchProgress({ files, steps }: BatchProgressProps) {
           className="progress-fill"
           initial={{ width: 0 }}
           animate={{ width: `${overallPercent}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
+          transition={{ duration: DURATION.slow, ease: 'easeOut' }}
           style={{ height: '100%' }}
         />
       </div>
 
-      {/* -- File cards list (scrollable) -- */}
+      {/* -- File cards + AI Reasoning Log (unified container) -- */}
       <div
-        className="glass-bright rounded-2xl p-4 flex-1 min-h-0"
-        style={{
-          overflowY: 'auto',
-        }}
+        className="glass-bright rounded-2xl flex-1 min-h-0 flex flex-col"
+        style={{ overflow: 'hidden' }}
       >
-        <AnimatePresence mode="popLayout">
-          {files.map((file, i) => (
-            <FileCard
-              key={file.id}
-              file={file}
-              index={i}
-              isActive={i === activeFileIndex}
-              steps={steps}
-              totalSteps={totalSteps}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* -- Active file step detail panel -- */}
-      <AnimatePresence>
-        {activeStepDef && activeFile && (
-          <motion.div
-            key={`step-detail-${activeFile.id}-${activeFile.currentStep}`}
-            className="mt-4 p-5 rounded-xl"
-            style={{
-              background: 'rgba(37,99,235,0.06)',
-              border: '1px solid rgba(59,130,246,0.15)',
-            }}
-            initial={{ opacity: 0, y: 12, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] as const }}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <motion.div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#3b82f6',
-                }}
-                animate={{
-                  boxShadow: [
-                    '0 0 4px rgba(59,130,246,0.4)',
-                    '0 0 14px rgba(59,130,246,0.8)',
-                    '0 0 4px rgba(59,130,246,0.4)',
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
+        {/* File cards (compact, no scroll — cards stay at top) */}
+        <div className="p-4 pb-0 shrink-0">
+          <AnimatePresence mode="popLayout">
+            {files.map((file, i) => (
+              <FileCard
+                key={file.id}
+                file={file}
+                index={i}
+                isActive={i === activeFileIndex}
+                steps={steps}
+                totalSteps={totalSteps}
               />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd' }}>
-                {activeFile.name}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 2px' }}>--</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#60a5fa' }}>
-                步骤 {activeFile.currentStep}/{totalSteps} -- {activeStepDef.name}
-              </span>
-            </div>
+            ))}
+          </AnimatePresence>
+        </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 20 }}>
-              {activeStepDef.description}
-            </p>
-
-            {/* Step progress within current file */}
-            <div className="mt-3" style={{ marginLeft: 20 }}>
-              <div className="progress-bar" style={{ height: 3 }}>
-                <motion.div
-                  className="progress-fill"
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${(activeFile.currentStep / totalSteps) * 100}%`,
-                  }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  style={{ height: '100%' }}
-                />
-              </div>
-              <div className="flex items-center justify-between mt-1">
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  已完成 {activeFile.stepStates.filter(s => s.status === 'completed').length} 个步骤
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  剩余 {totalSteps - activeFile.currentStep} 个步骤
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* AI Reasoning Log (fills remaining space, scrollable) */}
+        <div className="flex-1 min-h-0 px-4 pb-4">
+          <AuditLog files={files} steps={steps} />
+        </div>
+      </div>
     </motion.section>
   );
 }

@@ -1,6 +1,6 @@
-# PLATFORM_OPTIMIZATION_PLAN -- 21-dify-demo
+# PLATFORM_OPTIMIZATION_PLAN -- 灵阙智能体平台 Demo
 
-> 平台优化与扩展计划 | 性能目标、优化策略、未来路线图
+> 平台优化与扩展计划 | v3.1 | 2026-03-13 | 性能目标、优化策略、未来路线图
 
 ---
 
@@ -38,9 +38,8 @@
 | Component | Loading Strategy | Trigger |
 |-----------|-----------------|---------|
 | UploadZone | Main bundle | Page load |
-| DatePicker | Main bundle | Page load |
 | WorkflowPipeline | Main bundle | Page load |
-| StepCard | Main bundle | Page load |
+| BatchProgress | Main bundle | Phase enters `running` |
 | ResultPanel | Dynamic import | Workflow complete event |
 | IssueCard | Dynamic import | ResultPanel render |
 
@@ -66,6 +65,7 @@
 - Connector 动画: `stroke-dashoffset` (SVG) or `transform: scaleX()`
 - Spinner: CSS `@keyframes rotate` with `transform: rotate()`
 - 使用 `will-change` 提示浏览器预分配 GPU 层（仅对动画中元素）
+- **Phase transitions**: 使用 plain div conditional render 替代 AnimatePresence (D-015)。framer-motion 12 + React 19 下 AnimatePresence mode="wait" 的 exit/enter 序列化失效，改为即时切换 + 组件级动画 (stagger cards, animated counters, slide-in rows) 提供流畅体验
 
 ### 2.4 Font Loading
 
@@ -85,19 +85,19 @@ font-family:
 ### 2.5 SSE Handling
 
 ```
-EventSource configuration:
-  - Automatic reconnection (browser default)
-  - Custom retry interval: 3s
-  - Error boundary: display error state in WorkflowPipeline
-  - Timeout: 120s (workflow max duration)
-  - Cleanup: close EventSource on component unmount
+fetch + ReadableStream configuration (actual):
+  - POST /api/audit with FormData (file + auditDate + fileIndex)
+  - ReadableStream reader with TextDecoder for SSE parsing
+  - Named event types: step_start | step_done | result | error | done
+  - AbortController for request cancellation on reset
+  - Per-file sequential processing in batch mode
 ```
 
 关键实现要点:
-- 使用 `EventSource` API（非 `fetch` + `ReadableStream`）以获得自动重连
-- 每个 SSE event 解析后立即更新对应 StepCard 状态
-- 连接断开时保留已接收数据，重连后从断点继续
-- 组件卸载时必须调用 `eventSource.close()` 防止内存泄漏
+- 使用 `fetch` + `ReadableStream` (非 EventSource): POST body 支持 + 命名 event types
+- AbortController: `abortRef.current?.abort()` 在 reset 时取消所有进行中的请求
+- SSE 解析: 按 `\n` 分割，检测 `event: ` 和 `data: ` 前缀，JSON.parse data
+- Dify 事件翻译: `node_started/node_finished` -> `step_start/step_done` (via `matchStepByTitle`)
 
 ---
 
@@ -146,25 +146,35 @@ pnpm build
 
 | # | Enhancement | Description | Complexity | Status |
 |---|------------|-------------|------------|--------|
-| 1 | ~~Batch Processing~~ | 100 文件批量上传+逐文件审核+仪表盘汇总 | Medium | DONE (v2.0) |
-| 2 | Light Mode Toggle | 亮色主题，适应强光演示环境 | Medium | Pending |
-| 3 | Dify API Integration | SSE streaming 对接真实工作流 | Medium | Pending |
+| 1 | ~~Batch Processing~~ | 100 文件批量上传+审核+仪表盘汇总 | Medium | DONE (v2.0) |
+| 2 | ~~Dark Theme → Light Theme~~ | v2.3 dark unification → v3.0 light mandatory | Medium | DONE (v3.0) |
+| 3 | ~~Dify API Integration~~ | SSE streaming 对接真实工作流 | Medium | DONE (v2.2) |
 | 4 | Export to PDF Report | html2pdf 导出格式化审核报告 | Medium | Pending |
 | 5 | OCR Scanning Animation | 步骤 4 手写识别过程可视化 | Medium | Pending |
-| 6 | Virtual Scrolling | 100+ 文件列表性能优化 | Low | Pending |
-| 7 | History / Audit Trail | localStorage 保存历史 | Low | Pending |
-| 8 | Workflow Customization | 拖拽编辑器 | High | Deferred |
+| 6 | ~~Virtual Scrolling~~ | 100+ 文件列表 @tanstack/react-virtual | Low | DONE (v2.0) |
+| 7 | ~~History / Audit Trail~~ | 对话记录 + 决策审计追踪 (dual tab) | Medium | DONE (v3.0) |
+| 8 | ~~Workflow Editor~~ | GoldenRatio 可视化编辑器 (展示模式) | High | DONE (v3.0, read-only) |
 | 9 | Real-time Collaboration | 多人同看演示 | High | Deferred |
+| 10 | ~~n8n Node Flow Background~~ | SVG 节点流动画 | Low | DONE (v2.2) |
+| 11 | ~~SubDocument Recognition~~ | 6 types found/missing 网格 | Low | DONE (v2.2) |
+| 12 | ~~Knowledge Base Management~~ | KB 列表 + 状态 + 统计 | Medium | DONE (v3.0) |
+| 13 | ~~Settings Panel~~ | 模型/数据/通知/安全 4 section | Medium | DONE (v3.0) |
+| 14 | ~~Template Gallery~~ | Category tabs + 模板卡片 | Low | DONE (v3.0) |
+| 15 | ~~Platform Sidebar~~ | 收缩式导航 + active indicator | Low | DONE (v3.0) |
+| 16 | User Authentication | Login / RBAC / Token | High | Deferred |
+| 17 | Database Persistence | PostgreSQL + Prisma ORM | High | Deferred |
+| 18 | Knowledge CRUD | 知识库创建/编辑/删除 + 文件上传 | Medium | Pending |
+| 19 | Workflow CRUD | 工作流创建/编辑/保存 | High | Deferred |
 
 ### Roadmap
 
 ```
-v2.0 (current)     v2.5              v3.0
-     |                |                 |
-  Batch Demo     Light Mode +      Collab + Custom
-  Glassmorphism  Dify API Live     WebSocket
-  Copy/Export    OCR Animation     Drag-drop editor
-  Security HDR   PDF Export        Multi-viewer
+v2.0            v2.2           v2.3           v3.0 (current)     v3.5              v4.0
+  |               |              |              |                  |                 |
+Batch Demo    Dify API      Dark Theme     Platform Shell     Auth + DB         Full CRUD
+Glassmorphism n8n BG        Unification    8 Pages            KB Upload         Drag-drop editor
+Copy/Export   SubDoc Model  SSR dark       Dual-color brand   OCR Animation     Collab/WebSocket
+Security      5 Mock Cases  Stitch         Role Workflow SOP  PDF Export        Production deploy
 ```
 
 ---
@@ -213,6 +223,17 @@ FROM node:20-alpine AS runner
 | Error Tracking | Sentry (or console fallback) | JS errors, SSE failures |
 | API Health | Uptime check | Dify API availability |
 | Usage Analytics | Plausible (privacy-first) | Page views, workflow runs |
+
+---
+
+## Changelog
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-03-10 | v1.0 | Initial optimization plan |
+| 2026-03-11 | v2.3 | Dify API + n8n background + dark theme done |
+| 2026-03-12 | v3.0 | **Platform migration**: 8 pages done, roadmap extended to v3.5/v4.0, 7 new enhancements (#12-19) |
+| 2026-03-13 | v3.1 | **Animation optimization (D-015)**: phase transitions changed from AnimatePresence to plain div swaps, reducing animation bundle; SubDocBar readability improvements (72px width, 6px height, bold 700 counts) |
 
 ---
 

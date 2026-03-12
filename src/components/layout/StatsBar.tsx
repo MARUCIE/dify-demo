@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { DURATION } from '@/lib/animations';
 
 interface StatItem {
   value: string;
@@ -13,10 +14,10 @@ interface StatItem {
 }
 
 const STATS: StatItem[] = [
-  { value: '10', numericValue: 10, suffix: '', label: '审核步骤', color: '#60a5fa', hasGlow: true },
-  { value: '98.7%', numericValue: 98.7, suffix: '%', label: '识别准确率', color: '#4ade80' },
-  { value: '15s', numericValue: 15, suffix: 's', label: '平均审核耗时', color: '#c084fc' },
-  { value: '24/7', numericValue: 24, suffix: '/7', label: '全天候服务', color: '#fbbf24' },
+  { value: '10', numericValue: 10, suffix: '', label: '审核步骤', color: '#0D9488', hasGlow: true },
+  { value: '98.7%', numericValue: 98.7, suffix: '%', label: '识别准确率', color: '#059669' },
+  { value: '15s', numericValue: 15, suffix: 's', label: '平均审核耗时', color: '#0891B2' },
+  { value: '24/7', numericValue: 24, suffix: '/7', label: '全天候服务', color: '#D97706' },
 ];
 
 function AnimatedCounter({ item }: { item: StatItem }) {
@@ -64,7 +65,7 @@ export default function StatsBar() {
       style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
+      transition={{ duration: DURATION.slow, delay: 0.2, ease: 'easeOut' }}
     >
       {STATS.map((stat) => (
         <div key={stat.label} className="text-center">

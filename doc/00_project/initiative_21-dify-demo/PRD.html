@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD -- 灵阙智能体平台 Demo</title>
+<style>
+/* ============================================================
+   Claude Warm Academic Humanism Style
+   Teal accent (#0D9488) | Max-width 900px | Light + Dark mode
+   ============================================================ */
+
+:root {
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --text: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --border: #E7E5E4;
+  --border-light: #F5F5F4;
+  --accent: #0D9488;
+  --accent-light: #CCFBF1;
+  --accent-dark: #0F766E;
+  --code-bg: #F5F5F4;
+  --code-border: #E7E5E4;
+  --table-stripe: #FAFAF9;
+  --table-header-bg: #F5F5F4;
+  --blockquote-bg: #F5F5F4;
+  --blockquote-border: #0D9488;
+  --shadow: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+  --shadow-lg: 0 4px 12px rgba(28,25,23,0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0C0A09;
+    --surface: #1C1917;
+    --text: #E7E5E4;
+    --text-secondary: #A8A29E;
+    --text-muted: #78716C;
+    --border: #292524;
+    --border-light: #1C1917;
+    --accent: #2DD4BF;
+    --accent-light: #042F2E;
+    --accent-dark: #5EEAD4;
+    --code-bg: #1C1917;
+    --code-border: #292524;
+    --table-stripe: #1C1917;
+    --table-header-bg: #292524;
+    --blockquote-bg: #1C1917;
+    --blockquote-border: #2DD4BF;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+  }
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Source Han Serif SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 32px 40px;
+}
+
+/* Title & Version Bar */
+.doc-header {
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.doc-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.doc-header .subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Headings */
+h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 56px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 36px;
+  margin-bottom: 14px;
+}
+
+h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 28px;
+  margin-bottom: 10px;
+}
+
+/* Paragraphs */
+p {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+}
+
+strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Blockquote */
+blockquote {
+  margin: 24px 0;
+  padding: 16px 24px;
+  background: var(--blockquote-bg);
+  border-left: 4px solid var(--blockquote-border);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+blockquote p {
+  margin-bottom: 0;
+}
+
+/* Lists */
+ul, ol {
+  margin: 12px 0 20px 24px;
+  color: var(--text-secondary);
+}
+
+li {
+  margin-bottom: 6px;
+  padding-left: 4px;
+}
+
+li strong {
+  color: var(--text);
+}
+
+/* Tables */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 20px 0 28px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+thead {
+  background: var(--table-header-bg);
+}
+
+th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--table-stripe);
+}
+
+tbody tr:hover {
+  background: var(--accent-light);
+}
+
+/* Code */
+code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 0.875em;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+pre {
+  margin: 20px 0 28px;
+  padding: 20px 24px;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* Horizontal Rule */
+hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 48px 0;
+}
+
+/* Badge style for inline labels */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.badge-green { background: #DCFCE7; color: #166534; }
+.badge-amber { background: #FEF3C7; color: #92400E; }
+.badge-red   { background: #FEE2E2; color: #991B1B; }
+
+@media (prefers-color-scheme: dark) {
+  .badge-green { background: #052E16; color: #86EFAC; }
+  .badge-amber { background: #451A03; color: #FDE68A; }
+  .badge-red   { background: #450A0A; color: #FCA5A5; }
+}
+
+/* Decorative accent line at top */
+body::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark), var(--accent));
+}
+
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* Section numbering visual cue */
+h2 .section-num {
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container {
+    padding: 40px 16px 32px;
+  }
+  .doc-header h1 {
+    font-size: 26px;
+  }
+  h2 { font-size: 20px; }
+  h3 { font-size: 17px; }
+  table { font-size: 13px; }
+  th, td { padding: 8px 10px; }
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 60px 20px 40px;
+  color: #9B9B9D;
+  font-size: 13px;
+  line-height: 2.2;
+}
+footer p {
+  color: #9B9B9D;
+  margin-bottom: 0;
+}
+footer .gen-note {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* Print */
+@media print {
+  body::before { display: none; }
+  .container { max-width: 100%; padding: 20px; }
+  table { font-size: 12px; }
+  h2 { break-before: page; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>PRD -- 灵阙智能体平台 Demo</h1>
+  <p class="subtitle">Product Requirements Document | v3.1 | 2026-03-13</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. Overview -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">1.</span> 概述</h2>
+
+<p><strong>PROJECT_DIR</strong>: <code>/Users/mauricewen/Projects/21-dify-demo</code></p>
+
+<h3>1.1 产品名称</h3>
+<p>灵阙智能体平台 (LingQue Enterprise Agent Platform) -- Demo Edition</p>
+
+<h3>1.2 产品类型</h3>
+<p>企业级智能体平台 Demo 前端 -- 完整复刻 <code>07-lingque-professional</code> 的 B2B SaaS 架构，覆盖智能体管理、工作流编排、模板库、知识库、历史审计、平台设置六大模块。<br>
+<strong>v3.0 从单页 Demo 升级为完整平台展示。</strong></p>
+
+<h3>1.3 背景</h3>
+<p>路桥集团业务场景特殊：</p>
+<ul>
+  <li><strong>偏远工地</strong>：项目在不开放的小地方（宜宾挂弓山等），基础设施有限</li>
+  <li><strong>大量手写单据</strong>：公务接待审批单、接待清单等多为手写填写，OCR 难度高</li>
+  <li><strong>批量审核需求</strong>：财务集中处理时，一次数十到数百笔报销单需同时审核</li>
+  <li><strong>合规要求严格</strong>：国企报销需经过多级审批，审核维度多、标准复杂</li>
+</ul>
+
+<p><strong>v3.0 扩展</strong>：客户不仅需要看到单个审核 Demo，更需要看到完整的企业智能体平台能力：</p>
+<ul>
+  <li>多智能体管理与监控</li>
+  <li>工作流可视化编排 (n8n 风格)</li>
+  <li>知识库管理 (向量化索引)</li>
+  <li>决策审计追踪 (合规要求)</li>
+  <li>模型配置与安全管控</li>
+</ul>
+
+<h3>1.4 成功指标</h3>
+<ul>
+  <li><strong>平台感</strong>：从「一个 Demo」变成「一个平台」，客户能看到完整的产品形态</li>
+  <li><strong>功能闭环</strong>：每个侧栏入口都有真实页面，不存在灰色/disabled 入口</li>
+  <li><strong>品牌一致</strong>：双色系贯穿全平台 (Sky Blue 平台 + Jade Teal 智能体)</li>
+  <li><strong>专业级 UX</strong>：frosted glass + 微交互 + 60fps 动效，匹配 B2B SaaS 头部产品</li>
+</ul>
+
+<h3>1.5 设计范式：Single-Screen Progressive Disclosure</h3>
+<p>整个 upload &rarr; processing &rarr; result 流程在 <strong>一个视口高度</strong> 内完成：</p>
+<pre><code>Phase 1 [上传态]: 全屏 dropzone（支持文件/文件夹拖拽）
+    ↓ 动画收缩
+Phase 2 [审核态]: 上传区缩为顶部条 → 工作流/批量进度占满主区域
+    ↓ 动画收缩
+Phase 3 [结果态]: 工作流缩为完成条 → 结果面板展开
+    ↓ 点击展开
+Phase 4 [详情态]: 单笔报销的详细审核报告（问题列表）</code></pre>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 2. Target Users -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">2.</span> 目标用户</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>角色</th><th>描述</th><th>核心需求</th></tr></thead>
+<tbody>
+<tr><td>国企合规官</td><td>负责企业内部合规审查</td><td>看到 AI 如何自动化审核流程</td></tr>
+<tr><td>财务审计人员</td><td>日常处理报销单据</td><td>理解系统如何识别问题单据</td></tr>
+<tr><td>技术决策者</td><td>评估是否采购 AI 解决方案</td><td>看到技术实力和用户体验</td></tr>
+<tr><td>演示人员</td><td>在客户现场进行产品演示</td><td>流畅、稳定、视觉冲击力</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 3. Core Features -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">3.</span> 核心功能</h2>
+
+<h3>3.1 智能上传 (Smart Upload) -- v2.0 升级</h3>
+<p><strong>功能描述</strong>：支持单文件、多文件、<strong>整个文件夹拖拽</strong>批量上传。</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>项目</th><th>规格</th></tr></thead>
+<tbody>
+<tr><td>上传方式</td><td>Drag-and-drop zone (文件/文件夹) + click-to-browse</td></tr>
+<tr><td><strong>文件夹支持</strong></td><td><strong>拖入文件夹自动递归扫描 PDF</strong></td></tr>
+<tr><td>文件类型</td><td>仅 PDF (自动过滤非 PDF)</td></tr>
+<tr><td>文件大小限制</td><td>单文件 20MB</td></tr>
+<tr><td><strong>批量限制</strong></td><td>最多 100 文件/次</td></tr>
+<tr><td>日期输入</td><td>可选日期选择器，默认今天，应用于所有文件</td></tr>
+<tr><td>校验</td><td>文件类型检查、大小检查、重复检查</td></tr>
+<tr><td><strong>批量 UX</strong></td><td>文件列表表格（文件名/大小/页数/状态），带全选/删除操作</td></tr>
+<tr><td><strong>手写标识</strong></td><td>扫描检测手写比例，标记"手写为主"/"打印为主"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>3.1.1 渐进式披露 -- 上传阶段</h4>
+<ul>
+  <li>初始态：全屏 dropzone，大面积拖拽区域，文字引导"拖拽文件或文件夹至此"</li>
+  <li>有文件态：dropzone 缩小至 40% 高度，下方展示文件列表表格</li>
+  <li>启动后：dropzone + 列表整体缩为顶部固定条（显示"X 个文件 &middot; 审核中"）</li>
+</ul>
+
+<h3>3.2 工作流可视化 (10-step pipeline)</h3>
+<p><strong>功能描述</strong>：以动画形式展示 10 步审核流程的执行过程。</p>
+<p><strong>10 个步骤</strong>：</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>中文名称</th><th>英文名称</th><th>图标建议</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>报销资料输入</td><td>Document Input</td><td>FileUp</td></tr>
+<tr><td>2</td><td>报销过期日判定</td><td>Expiry Check</td><td>Calendar</td></tr>
+<tr><td>3</td><td>报销单据拆分</td><td>Receipt Splitting</td><td>Scissors</td></tr>
+<tr><td>4</td><td>报销单据识别</td><td>Receipt Recognition</td><td>Scan</td></tr>
+<tr><td>5</td><td>提取接待类型信息</td><td>Extract Reception Info</td><td>Search</td></tr>
+<tr><td>6</td><td>判断接待类型</td><td>Determine Reception Type</td><td>GitBranch</td></tr>
+<tr><td>7</td><td>公务接待单据审核</td><td>Official Reception Audit</td><td>Shield</td></tr>
+<tr><td>8</td><td>公务接待审核内容汇总</td><td>Audit Summary</td><td>ClipboardList</td></tr>
+<tr><td>9</td><td>审核结果编排</td><td>Result Arrangement</td><td>Layout</td></tr>
+<tr><td>10</td><td>审核结果输出</td><td>Result Output</td><td>FileCheck</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>步骤状态</strong>：</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>状态</th><th>视觉表现</th><th>动画效果</th></tr></thead>
+<tbody>
+<tr><td>idle</td><td>灰色，低饱和</td><td>无</td></tr>
+<tr><td>active</td><td>蓝色/主色调，发光</td><td>脉冲 + 进度环</td></tr>
+<tr><td>completed</td><td>绿色，勾选标记</td><td>缩放弹入勾选</td></tr>
+<tr><td>error</td><td>红色，警告图标</td><td>抖动 + 高亮</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>连接线动画</strong>：Steps 之间的连线在 active 状态时显示流动粒子效果。</p>
+<p><strong>布局</strong>：横向流水线布局 (desktop)，支持自动换行。</p>
+
+<h3>3.3 审核结果展示 (Result Display)</h3>
+<p><strong>功能描述</strong>：展示结构化的审核结果。</p>
+<p><strong>结果结构</strong>：</p>
+
+<pre><code>招待类型：公务接待
+审核建议：人工复核
+问题列表：
+  [!] 菜品清单缺失
+  [!] 陪餐人员信息不完整
+  [!] 报销日期超过有效期限</code></pre>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>元素</th><th>规格</th></tr></thead>
+<tbody>
+<tr><td>汇总卡片</td><td>招待类型 + 审核建议 (badge style) + 报销金额 + 审核耗时</td></tr>
+<tr><td><strong>子单据网格</strong></td><td><strong>单据拆分识别: 6 种标准单据 (费用报销单/审批单/接待清单/情况说明/发票/菜品清单) 的 found/missing 状态 + 页码</strong></td></tr>
+<tr><td>问题列表</td><td>严重程度编码项 (error=红, warning=琥珀, info=蓝)，支持详情展开</td></tr>
+<tr><td>详情面板</td><td>每项问题可展开查看详情</td></tr>
+<tr><td><strong>SubDocBar (批量看板)</strong></td><td><strong>按文件展示子单据判定条：flex 比例色段 (green=通过, amber=警告, red=不通过+缺失)，72px 宽, 6px 高，带加粗计数标签</strong></td></tr>
+<tr><td>导出</td><td>复制到剪贴板 (结构化文本)，PDF 导出 (计划中)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>子单据类型 (单据拆分识别)</strong>：</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>#</th><th>类型</th><th>是否必需</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>费用报销单</td><td>是</td><td>封面页，含金额、部门、日期</td></tr>
+<tr><td>2</td><td>公务接待审批单</td><td>是</td><td>事前审批记录 (先审批后接待)</td></tr>
+<tr><td>3</td><td>公务接待清单</td><td>是</td><td>来宾名单、人数、场所、行程</td></tr>
+<tr><td>4</td><td>情况说明</td><td>是</td><td>活动描述</td></tr>
+<tr><td>5</td><td>电子发票</td><td>是</td><td>税务发票</td></tr>
+<tr><td>6</td><td>菜品清单</td><td>有条件</td><td>金额 &gt; 1000 或政策要求时必需</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>审核建议 Badge 配色</strong>：</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>建议</th><th>颜色</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>通过</td><td><span class="badge badge-green">绿色</span></td><td>未发现问题</td></tr>
+<tr><td>人工复核</td><td><span class="badge badge-amber">橙色/琥珀</span></td><td>存在问题需人工审核</td></tr>
+<tr><td>不通过</td><td><span class="badge badge-red">红色</span></td><td>存在严重问题，驳回</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 4. Non-Functional Requirements -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">4.</span> 非功能性需求</h2>
+
+<h3>4.1 性能</h3>
+<ul>
+  <li>LCP (Largest Contentful Paint) &lt; 2s</li>
+  <li>工作流动画：60fps，无卡顿</li>
+  <li>总包体积 &lt; 500KB (gzipped)</li>
+</ul>
+
+<h3>4.2 可访问性</h3>
+<ul>
+  <li>全中文 UI (所有标签、提示、消息)</li>
+  <li>核心流程支持键盘导航</li>
+  <li>交互元素提供 Screen reader 标签</li>
+</ul>
+
+<h3>4.3 视觉设计</h3>
+<ul>
+  <li>专业企业美学 (国企风格)</li>
+  <li>仅浅色主题 (frosted glass + 白色底色; 参见 D-011)</li>
+  <li>双品牌色系：Sky Blue (#0284C7, 平台页面) + Jade Teal (#0D9488, 智能体页面)，中性灰色，红/绿/琥珀用于状态指示</li>
+  <li>字体：系统中文字体 (PingFang SC / Microsoft YaHei fallback)</li>
+  <li>微妙动效：不浮夸，但精致自信</li>
+</ul>
+
+<h3>4.4 响应式</h3>
+<ul>
+  <li>主要：桌面端 (1280px+)</li>
+  <li>次要：平板横屏 (1024px+)</li>
+  <li>不要求：移动端 (&lt; 768px)</li>
+</ul>
+
+<h3>4.5 浏览器支持</h3>
+<ul>
+  <li>Chrome 120+, Edge 120+, Safari 17+</li>
+  <li>Firefox 120+ (nice to have)</li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 5. Tech Stack -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">5.</span> 技术栈</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>层级</th><th>技术</th><th>选型理由</th></tr></thead>
+<tbody>
+<tr><td>框架</td><td>Next.js 16 (App Router)</td><td>SSR + API routes，生产级</td></tr>
+<tr><td>样式</td><td>TailwindCSS 4</td><td>Utility-first，快速迭代</td></tr>
+<tr><td>组件库</td><td>shadcn/ui</td><td>可访问、可定制、专业级</td></tr>
+<tr><td>动画</td><td>Framer Motion</td><td>声明式、高性能、React 原生</td></tr>
+<tr><td>图标</td><td>Lucide React</td><td>一致性好、支持 tree-shaking</td></tr>
+<tr><td>状态管理</td><td>React hooks (useState/useReducer)</td><td>复杂度适中，无需外部状态库</td></tr>
+<tr><td>API</td><td>Next.js Route Handlers</td><td>代理 Dify API，隐藏 API Key</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6. API Design -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">6.</span> API 设计</h2>
+
+<h3>6.1 模式</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>模式</th><th>配置</th><th>行为</th></tr></thead>
+<tbody>
+<tr><td>Mock</td><td><code>DEMO_MODE=true</code></td><td>返回硬编码响应，模拟延迟</td></tr>
+<tr><td>Live</td><td><code>DEMO_MODE=false</code></td><td>调用 <code>DIFY_API_URL</code> 的 Dify API</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>6.2 接口</h3>
+<p><strong>POST /api/audit</strong> (实际实现)</p>
+<p>请求：<code>multipart/form-data</code></p>
+<ul>
+  <li><code>file</code>: PDF 二进制 (必需, 最大 20MB)</li>
+  <li><code>auditDate</code>: "2025-07-09" (可选, 默认今天)</li>
+  <li><code>fileIndex</code>: number (批量处理时使用, 0-based)</li>
+</ul>
+
+<p>响应：SSE stream (<code>text/event-stream</code>)</p>
+<pre><code>event: step_start
+data: {"step":1,"message":"正在接收报销资料..."}
+
+event: step_done
+data: {"step":1,"message":"报销资料接收完成","durationMs":800}
+
+event: result
+data: {"receptionType":"公务接待","suggestion":"人工复核","amount":470,"pageCount":5,"subDocuments":[...],"issues":[...]}
+
+event: error
+data: {"message":"Dify workflow failed (500): ..."}
+
+event: done
+data: {}</code></pre>
+
+<h3>6.3 Dify API 集成</h3>
+<ul>
+  <li>接入点：<code>https://agentdemo.hegui.cn/v1/workflows/run</code></li>
+  <li>认证：Bearer token，存储在 <code>DIFY_API_KEY</code></li>
+  <li>输入映射：PDF 文件 &rarr; Dify 文件上传 &rarr; workflow 输入</li>
+  <li>输出映射：Dify workflow nodes &rarr; 10 步进度事件</li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 7. Information Architecture (v3.0) -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">7.</span> 信息架构 (v3.0)</h2>
+
+<pre><code>/                           -> 智能体列表 (平台首页, 8 个企业智能体)
+/audit                      -> 报销审核详情 (v2 单页审核, 4 phase progressive)
+/workflows                  -> 工作流列表 (card grid + status)
+/workflows/expense-audit    -> 工作流编辑器 (GoldenRatio 38.2/61.8 + n8n canvas)
+/templates                  -> 模板库 (category tabs + card grid)
+/knowledge                  -> 知识库列表 (5 KBs + stats panel)
+/history                    -> 历史记录 (dual tab: conversations + audit traces)
+/settings                   -> 平台设置 (double sidebar, 4 sections)
+/api/audit                  -> SSE 审核接口 (multipart/form-data -> text/event-stream)
+/_not-found                 -> 404 页面</code></pre>
+
+<p><strong>导航体系</strong>：左侧可收缩 Sidebar (64px &harr; 256px) + 每页 sticky PageHeader</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 8. Out of Scope (v3.0) -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">8.</span> 范围外 (v3.0)</h2>
+
+<ul>
+  <li>用户认证/登录 (Demo 无需登录)</li>
+  <li>数据库/持久化 (全部 Mock 数据, 无持久化)</li>
+  <li>实时协作 (multi-viewer)</li>
+  <li>移动端响应式设计 (&lt; 768px)</li>
+  <li>国际化 (英文版本)</li>
+  <li>Dify 工作流可视化编辑器 (仅展示, 不可编辑)</li>
+  <li>知识库 CRUD (仅列表展示)</li>
+  <li>设置持久化 (toggle 状态仅 session 级)</li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 9. Open Questions -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">9.</span> 待解决问题</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>#</th><th>问题</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Dify API 是否支持 SSE streaming?</td><td>已解决：是，<code>response_mode: "streaming"</code></td></tr>
+<tr><td>2</td><td>是否需要显示每步的具体耗时?</td><td>已解决：是，totalDuration 显示在结果头部</td></tr>
+<tr><td>3</td><td>Mock 模式的延迟时间?</td><td>已解决：每步特定延迟，定义在 MOCK_STEP_DELAYS</td></tr>
+<tr><td>4</td><td>是否需要支持重新上传/重试?</td><td>已解决：Reset + AbortController</td></tr>
+<tr><td>5</td><td>Dify 输入变量名?</td><td>已解决：通过环境变量配置</td></tr>
+<tr><td>6</td><td>v3 是否需要所有页面功能可交互?</td><td>已解决：列表/搜索/筛选可交互, CRUD 操作仅展示</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 10. Role Workflow SOP -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">10.</span> 角色工作流 SOP (真实岗位工作流)</h2>
+
+<h3>10.1 角色名册</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>#</th><th>角色</th><th>职责边界</th></tr></thead>
+<tbody>
+<tr><td>R1</td><td>产品经理</td><td>需求定义、优先级排序、验收标准制定、PDCA 文档维护</td></tr>
+<tr><td>R2</td><td>UI/UX 设计师</td><td>视觉设计、交互原型、设计系统、品牌一致性</td></tr>
+<tr><td>R3</td><td>系统架构师</td><td>技术选型、模块划分、接口契约、架构决策记录</td></tr>
+<tr><td>R4</td><td>前端工程师</td><td>页面实现、组件开发、状态管理、动效实现</td></tr>
+<tr><td>R5</td><td>QA 工程师</td><td>测试计划、用例执行、缺陷追踪、Lighthouse 审计</td></tr>
+<tr><td>R6</td><td>SRE / DevOps</td><td>CI/CD pipeline、Vercel 部署、监控告警、性能基线</td></tr>
+<tr><td>R7</td><td>安全工程师</td><td>安全审计、CSP 策略、数据保护、OWASP 检查</td></tr>
+<tr><td>R8</td><td>数据工程师</td><td>数据模型设计、Mock 数据生成、API 集成、SSE schema</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.2 各角色交付物与验收标准</h3>
+
+<h4>R1 &rarr; R2/R3/R5：产品经理交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>PRD.md</td><td>Markdown + HTML</td><td>功能点 100% 覆盖, 验收标准可量化</td></tr>
+<tr><td>USER_EXPERIENCE_MAP.md</td><td>Markdown + HTML</td><td>用户旅程完整, 每步有组件映射</td></tr>
+<tr><td>task_plan.md</td><td>Markdown</td><td>Phase/Task 粒度, 状态实时更新</td></tr>
+<tr><td>ROLLING_REQUIREMENTS_AND_PROMPTS.md</td><td>Markdown</td><td>需求变更有日期+原因</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R2 &rarr; R4/R5：设计师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>设计 Variants</td><td>21st-magic JSON</td><td>&gt;= 3 方案, 有评分对比</td></tr>
+<tr><td>品牌规范</td><td>CSS tokens in globals.css</td><td>双色系 + 排版 + 间距统一</td></tr>
+<tr><td>组件规范</td><td>代码内 inline styles</td><td>PageHeader/Card/Badge 模式一致</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R3 &rarr; R4/R6/R8：架构师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>SYSTEM_ARCHITECTURE.md</td><td>Markdown + HTML + Mermaid</td><td>模块图 + 数据流 + 决策记录</td></tr>
+<tr><td>接口契约</td><td>TypeScript interfaces</td><td>strict mode, 无 any</td></tr>
+<tr><td>决策记录 D-xxx</td><td>SA.md section</td><td>pros/cons/risk 三栏</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R4 &rarr; R5/R6/R7：前端工程师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>页面组件</td><td>.tsx files</td><td><code>next build</code> 零错误零警告</td></tr>
+<tr><td>数据层</td><td>src/lib/*.ts</td><td>TypeScript strict, 类型导出</td></tr>
+<tr><td>路由</td><td>src/app/*/page.tsx</td><td>匹配 Section 7 路由表</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R5 &rarr; R4/R1：QA 工程师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>Lighthouse Report</td><td>JSON/HTML</td><td>四项 &gt;= 90</td></tr>
+<tr><td>测试报告</td><td>Markdown</td><td>P0 用例 100% pass</td></tr>
+<tr><td>缺陷列表</td><td>task_plan.md</td><td>severity + repro steps</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R6 &rarr; R1：SRE 交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>Vercel 部署</td><td>URL</td><td>可访问, HTTPS, 自动部署</td></tr>
+<tr><td>CI 配置</td><td>GitHub Actions</td><td>PR preview + main deploy</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R7 &rarr; R4/R6：安全工程师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>安全审计报告</td><td>Markdown</td><td>OWASP Top 10 检查</td></tr>
+<tr><td>CSP 策略</td><td>next.config.ts</td><td>strict-dynamic, 无 unsafe-eval</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>R8 &rarr; R4：数据工程师交付</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>交付物</th><th>格式</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>TypeScript interfaces</td><td>src/lib/*.ts</td><td>类型覆盖所有实体</td></tr>
+<tr><td>Mock 数据</td><td>src/lib/*.ts export</td><td>每类实体 &gt;= 3 条</td></tr>
+<tr><td>API handlers</td><td>src/app/api/*/route.ts</td><td>双模式 mock/live</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>10.3 协作流程</h3>
+
+<pre><code>Sprint Lifecycle:
+
+Day 1:  R1 (PM) → PRD + UXM + task_plan
+         ├─→ R2 (Designer): Stitch Pipeline 出设计稿
+         └─→ R3 (Architect): Council 出架构
+
+Day 2:  R3 → R8 (Data): 数据模型 + Mock
+        R2 → R4 (Engineer): 开始实现
+
+Day 3:  R4 (Engineer): 实现 + 自测
+        R8 → R4: 数据层完成, 前端消费
+
+Day 4:  R4 → R5 (QA): 提测
+        R4 → R7 (Security): 安全审计
+        R5 ∥ R7 并行执行
+
+Day 5:  R5 → R4: 缺陷修复
+        R7 → R4: 安全修复
+        R4 → R6 (SRE): 部署
+        R6 → R1 (PM): 上线验收</code></pre>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- Changelog -->
+<!-- ============================================================ -->
+
+<h2>变更日志</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>日期</th><th>版本</th><th>变更内容</th></tr></thead>
+<tbody>
+<tr><td>2026-03-10</td><td>v1.0</td><td>初始 PRD</td></tr>
+<tr><td>2026-03-10</td><td>v2.0</td><td>批量审核系统、单屏渐进披露、手写 OCR</td></tr>
+<tr><td>2026-03-10</td><td>v2.1</td><td>Swarm 优化 (council review)、安全头、复制处理器</td></tr>
+<tr><td>2026-03-11</td><td>v2.2</td><td>Dify API 集成 (双模式 SSE)、SubDocument 模型、n8n 背景</td></tr>
+<tr><td>2026-03-11</td><td>v2.3</td><td>Stitch pipeline 深色主题统一</td></tr>
+<tr><td>2026-03-12</td><td>v3.0</td><td><strong>平台化迁移</strong>：8 个页面、双品牌色系、角色工作流 SOP (Section 10)、信息架构更新 (Section 7)</td></tr>
+<tr><td>2026-03-13</td><td>v3.1</td><td><strong>动画 + UI 打磨</strong>：移除 AnimatePresence phase 转场 (D-015)、新增 SubDocBar 规格、修正仅浅色主题 + 双色系描述 (NFR 部分)</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<footer style="text-align:center; padding:60px 20px 40px; color:#9B9B9D; font-size:13px; line-height:2.2;">
+    <p>灵阙智能体平台 v3.1 -- 产品需求文档</p>
+    <p>Maurice | maurice_wen@proton.me</p>
+    <p style="font-size:12px; margin-top:8px;">Generated 2026-03-13 | Source: PRD.md v3.1</p>
+</footer>
+
+</body>
+</html>

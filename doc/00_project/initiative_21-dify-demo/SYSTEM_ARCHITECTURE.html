@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统架构 -- 灵阙智能体平台 Demo</title>
+<style>
+:root {
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --text: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --border: #E7E5E4;
+  --border-light: #F5F5F4;
+  --accent: #0D9488;
+  --accent-light: #CCFBF1;
+  --accent-dark: #0F766E;
+  --code-bg: #F5F5F4;
+  --code-border: #E7E5E4;
+  --table-stripe: #FAFAF9;
+  --table-header-bg: #F5F5F4;
+  --blockquote-bg: #F5F5F4;
+  --blockquote-border: #0D9488;
+  --shadow: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+  --shadow-lg: 0 4px 12px rgba(28,25,23,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0C0A09;
+    --surface: #1C1917;
+    --text: #E7E5E4;
+    --text-secondary: #A8A29E;
+    --text-muted: #78716C;
+    --border: #292524;
+    --border-light: #1C1917;
+    --accent: #2DD4BF;
+    --accent-light: #042F2E;
+    --accent-dark: #5EEAD4;
+    --code-bg: #1C1917;
+    --code-border: #292524;
+    --table-stripe: #1C1917;
+    --table-header-bg: #292524;
+    --blockquote-bg: #1C1917;
+    --blockquote-border: #2DD4BF;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+  }
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Source Han Serif SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+  font-size: 16px; line-height: 1.8; color: var(--text); background-color: var(--bg);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 60px 32px 40px; }
+.doc-header { margin-bottom: 48px; padding-bottom: 32px; border-bottom: 2px solid var(--accent); }
+.doc-header h1 { font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--text); margin-bottom: 12px; letter-spacing: -0.01em; }
+.doc-header .subtitle { font-size: 15px; color: var(--text-secondary); font-style: italic; }
+h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 56px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; }
+h3 { font-size: 19px; font-weight: 600; color: var(--text); margin-top: 36px; margin-bottom: 14px; }
+h4 { font-size: 16px; font-weight: 600; color: var(--accent); margin-top: 28px; margin-bottom: 10px; }
+p { margin-bottom: 16px; color: var(--text-secondary); }
+strong { color: var(--text); font-weight: 600; }
+blockquote { margin: 24px 0; padding: 16px 24px; background: var(--blockquote-bg); border-left: 4px solid var(--blockquote-border); border-radius: 0 8px 8px 0; color: var(--text-secondary); font-style: italic; }
+blockquote p { margin-bottom: 0; }
+ul, ol { margin: 12px 0 20px 24px; color: var(--text-secondary); }
+li { margin-bottom: 6px; padding-left: 4px; }
+li strong { color: var(--text); }
+.table-wrapper { overflow-x: auto; margin: 20px 0 28px; border-radius: 8px; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; }
+thead { background: var(--table-header-bg); }
+th { padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text); border-bottom: 2px solid var(--accent); white-space: nowrap; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+tbody tr:hover { background: var(--accent-light); }
+code { font-family: "SF Mono", "Fira Code", "Cascadia Code", "Source Code Pro", monospace; font-size: 0.875em; background: var(--code-bg); border: 1px solid var(--code-border); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+pre { margin: 20px 0 28px; padding: 20px 24px; background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px; overflow-x: auto; box-shadow: var(--shadow); }
+pre code { background: none; border: none; padding: 0; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+hr { border: none; height: 1px; background: var(--border); margin: 48px 0; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+a:hover { border-bottom-color: var(--accent); }
+h2 .section-num { color: var(--accent); margin-right: 8px; }
+body::before { content: ""; display: block; height: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-dark), var(--accent)); }
+
+/* Diagram styles -- styled HTML/CSS equivalents for Mermaid */
+.diagram {
+  margin: 20px 0 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+.diagram-title {
+  display: block;
+  padding: 6px 16px;
+  margin: 20px 0 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 8px 8px 0 0;
+}
+.diagram-title + .diagram {
+  margin-top: 0;
+  border-radius: 0 0 8px 8px;
+  border-top: none;
+}
+.diagram-group {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+  background: var(--bg);
+}
+.diagram-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+.diagram-node {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface);
+  margin: 4px;
+  line-height: 1.4;
+  vertical-align: top;
+}
+.diagram-node small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.diagram-arrow {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 13px;
+  margin: 0 6px;
+  vertical-align: middle;
+  font-weight: 600;
+}
+.diagram-arrow-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.diagram-flow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0;
+}
+.diagram-nodes-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* State diagram styles */
+.state-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.state-box {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 140px;
+  background: var(--surface);
+}
+.state-box.state-active { border-color: var(--accent); }
+.state-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.state-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.state-transitions {
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+.state-transitions li {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
+.state-transitions li:last-child { border-bottom: none; }
+.state-transitions code {
+  font-size: 12px;
+}
+
+/* Sequence diagram as table */
+.seq-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.seq-table th { background: var(--accent); color: #fff; padding: 8px 12px; font-size: 12px; }
+.seq-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.seq-table .seq-from { color: var(--accent); font-weight: 600; }
+.seq-table .seq-to { color: var(--accent-dark); font-weight: 600; }
+.seq-table .seq-msg { color: var(--text-secondary); }
+.seq-table .seq-alt-header { background: var(--accent-light); font-weight: 600; color: var(--accent-dark); }
+
+@media (max-width: 640px) {
+  .container { padding: 40px 16px 32px; }
+  .doc-header h1 { font-size: 26px; }
+  h2 { font-size: 20px; } h3 { font-size: 17px; }
+  table { font-size: 13px; } th, td { padding: 8px 10px; }
+  .diagram { padding: 16px; }
+  .diagram-node { font-size: 12px; padding: 6px 10px; }
+}
+footer { text-align: center; padding: 60px 20px 40px; color: #9B9B9D; font-size: 13px; line-height: 2.2; }
+footer p { color: #9B9B9D; margin-bottom: 0; }
+footer .gen-note { font-size: 12px; margin-top: 8px; }
+@media print { body::before { display: none; } .container { max-width: 100%; padding: 20px; } table { font-size: 12px; } h2 { break-before: page; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>系统架构 -- 灵阙智能体平台 Demo</h1>
+  <p class="subtitle">SYSTEM_ARCHITECTURE | v3.1 | 2026-03-13</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. 概述 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">1.</span> 概述</h2>
+
+<p><strong>PROJECT_DIR</strong>: <code>/Users/mauricewen/Projects/21-dify-demo</code></p>
+
+<p>灵阙企业智能体平台 Demo 前端，完整复刻 <code>07-lingque-professional</code> 的 B2B SaaS 架构。v3.0 从单页审核 Demo 升级为 8 页面完整平台展示，覆盖智能体、工作流、模板、知识库、历史、设置六大模块。</p>
+
+<p><strong>设计原则</strong>:</p>
+<ul>
+  <li><strong>无状态</strong>: 无数据库、无用户体系、无持久化，纯展示型前端（Mock 数据）</li>
+  <li><strong>双模式</strong>: Mock (离线演示) + Live (对接 Dify API)，通过环境变量一键切换（仅 <code>/audit</code> 路由）</li>
+  <li><strong>代理隔离</strong>: API Key 仅存于服务端 Route Handler，前端永远不接触密钥</li>
+  <li><strong>双色品牌</strong>: 平台功能 = Sky Blue (#0284C7/#0369A1)，智能体功能 = Jade Teal (#0D9488/#0F766E)</li>
+  <li><strong>Light theme</strong>: frosted glass (backdrop-blur) + 白底毛玻璃卡片 + 微交互</li>
+  <li><strong>Multi-page SPA</strong>: Next.js App Router 多路由，左侧可收缩 Sidebar 导航</li>
+  <li><strong>批量处理</strong>: <code>/audit</code> 页面支持 100 个 PDF 文件批量审核，逐文件 10 步流水线执行</li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 2. 高层架构 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">2.</span> 高层架构</h2>
+
+<div class="diagram-title">架构总览 -- 浏览器 / Next.js 服务端 / 外部系统</div>
+<div class="diagram">
+
+  <div class="diagram-group">
+    <div class="diagram-group-label">Browser (Client)</div>
+    <div class="diagram-nodes-grid">
+      <div class="diagram-node">Sidebar<small>6 项导航, 64/256px</small></div>
+      <div class="diagram-node">Agent List<small>/ (8 agents)</small></div>
+      <div class="diagram-node">Expense Audit<small>/audit (v2 preserved)</small></div>
+      <div class="diagram-node">Workflow List<small>/workflows</small></div>
+      <div class="diagram-node">Workflow Editor<small>/workflows/expense-audit</small></div>
+      <div class="diagram-node">Templates<small>/templates</small></div>
+      <div class="diagram-node">Knowledge Base<small>/knowledge</small></div>
+      <div class="diagram-node">History<small>/history</small></div>
+      <div class="diagram-node">Settings<small>/settings</small></div>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0;">Sidebar --> 所有页面 &nbsp;|&nbsp; Workflow List --> Workflow Editor</p>
+  </div>
+
+  <div class="diagram-flow-row" style="justify-content:center;margin:12px 0;">
+    <span class="diagram-arrow">|</span>
+    <span class="diagram-arrow-label">POST multipart &nbsp;/&nbsp; SSE stream</span>
+    <span class="diagram-arrow">|</span>
+  </div>
+
+  <div class="diagram-group">
+    <div class="diagram-group-label">Next.js Server</div>
+    <div class="diagram-flow-row">
+      <div class="diagram-node">Route Handler<small>POST /api/audit</small></div>
+      <span class="diagram-arrow">--></span>
+      <div class="diagram-node" style="border-color:#0284C7;">Mock Engine<small>模拟 SSE 流<br>(DEMO_MODE=true)</small></div>
+    </div>
+    <div class="diagram-flow-row">
+      <div class="diagram-node">Route Handler<small>POST /api/audit</small></div>
+      <span class="diagram-arrow">--></span>
+      <div class="diagram-node" style="border-color:#0284C7;">Dify Proxy<small>转发 + 协议翻译<br>(DEMO_MODE=false)</small></div>
+    </div>
+  </div>
+
+  <div class="diagram-flow-row" style="justify-content:center;margin:12px 0;">
+    <span class="diagram-arrow">|</span>
+    <span class="diagram-arrow-label">HTTPS &nbsp;/&nbsp; workflow events</span>
+    <span class="diagram-arrow">|</span>
+  </div>
+
+  <div class="diagram-group">
+    <div class="diagram-group-label">External</div>
+    <div class="diagram-node">Dify Workflow<small>agentdemo.hegui.cn</small></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 3. 组件架构 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">3.</span> 组件架构</h2>
+
+<h3>3.1 组件层级 (v3.0)</h3>
+
+<div class="diagram-title">组件树 -- RootLayout 到页面组件</div>
+<div class="diagram">
+
+  <div class="diagram-flow-row">
+    <div class="diagram-node" style="border-width:3px;">RootLayout<small>src/app/layout.tsx</small></div>
+  </div>
+
+  <div class="diagram-flow-row" style="margin:4px 0;">
+    <span class="diagram-arrow" style="margin-left:24px;">|--> </span>
+    <div class="diagram-node">Sidebar<small>collapsible 64/256px</small></div>
+    <span style="color:var(--text-muted);font-size:12px;margin-left:8px;">(Platform Shell, 所有页面共享)</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin:12px 0 12px 48px;">
+    <div class="diagram-node">Agent List Home<small>src/app/page.tsx</small></div>
+    <div class="diagram-node">Expense Audit<small>src/app/audit/page.tsx</small></div>
+    <div class="diagram-node">Workflow List<small>src/app/workflows/page.tsx</small></div>
+    <div class="diagram-node">Workflow Editor<small>src/app/workflows/expense-audit/page.tsx</small></div>
+    <div class="diagram-node">Template Gallery<small>src/app/templates/page.tsx</small></div>
+    <div class="diagram-node">Knowledge Base<small>src/app/knowledge/page.tsx</small></div>
+    <div class="diagram-node">History<small>src/app/history/page.tsx</small></div>
+    <div class="diagram-node">Settings<small>src/app/settings/page.tsx</small></div>
+  </div>
+
+  <p style="font-size:12px;color:var(--text-muted);margin:12px 0 0;">Audit 子组件: AnimatedBackground --> UploadZone --> WorkflowPipeline --> BatchResultsDashboard --> ResultPanel</p>
+
+</div>
+
+<h3>3.2 核心组件职责 (v3.0)</h3>
+
+<h4>Platform Shell</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>组件</th><th>文件</th><th>作用域</th><th>职责</th></tr></thead>
+<tbody>
+<tr><td><code>Sidebar</code></td><td><code>components/workspace/Sidebar.tsx</code></td><td>所有页面</td><td>可收缩导航 (64/256px), 6 menu items, layoutId active indicator, Framer Motion</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>页面组件（每页独立 <code>page.tsx</code>）</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>页面</th><th>路由</th><th>色彩主题</th><th>核心特性</th></tr></thead>
+<tbody>
+<tr><td>Agent List</td><td><code>/</code></td><td>Jade Teal</td><td>8 agent 卡片, search/filter, 状态 badges, 标签系统</td></tr>
+<tr><td>Expense Audit</td><td><code>/audit</code></td><td>Jade Teal</td><td>v2 保留: 4 阶段渐进式, 10 步 pipeline, 批量处理</td></tr>
+<tr><td>Workflow List</td><td><code>/workflows</code></td><td>Sky Blue</td><td>卡片网格, 状态 badges (active/draft/paused), 触发类型</td></tr>
+<tr><td>Workflow Editor</td><td><code>/workflows/expense-audit</code></td><td>Sky Blue</td><td>GoldenRatio 38.2/61.8, n8n 分支画布, 决策节点</td></tr>
+<tr><td>Templates</td><td><code>/templates</code></td><td>Sky Blue</td><td>分类 tabs, 模板卡片, 难度/耗时 badges</td></tr>
+<tr><td>Knowledge Base</td><td><code>/knowledge</code></td><td>Sky Blue</td><td>5 知识库卡片, 状态 (active/indexing/error), 统计面板</td></tr>
+<tr><td>History</td><td><code>/history</code></td><td>Sky Blue</td><td>双 tab: 对话 (ConvCard) + 审计追踪 (TraceCard + TraceDetail timeline)</td></tr>
+<tr><td>Settings</td><td><code>/settings</code></td><td>Sky Blue</td><td>双侧栏, 4 分区: 模型配置/数据管理/通知/安全权限</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>审核子组件（v2 保留）</h4>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>组件</th><th>文件</th><th>阶段</th><th>职责</th></tr></thead>
+<tbody>
+<tr><td><code>AnimatedBackground</code></td><td><code>components/layout/AnimatedBackground.tsx</code></td><td>all</td><td>n8n 风格 SVG 节点流</td></tr>
+<tr><td><code>Header</code></td><td><code>components/layout/Header.tsx</code></td><td>all</td><td>品牌标识 + 主题切换</td></tr>
+<tr><td><code>StatsBar</code></td><td><code>components/layout/StatsBar.tsx</code></td><td>upload</td><td>4 KPI 卡片</td></tr>
+<tr><td><code>UploadZone</code></td><td><code>components/upload/UploadZone.tsx</code></td><td>upload</td><td>文件/文件夹拖拽 + 日期 + CTA</td></tr>
+<tr><td><code>WorkflowPipeline</code></td><td><code>components/workflow/WorkflowPipeline.tsx</code></td><td>running</td><td>10 步 2x5 网格</td></tr>
+<tr><td><code>BatchProgress</code></td><td><code>components/batch/BatchProgress.tsx</code></td><td>running</td><td>圆形进度 + 文件卡片</td></tr>
+<tr><td><code>BatchResultsDashboard</code></td><td><code>components/batch/BatchResultsDashboard.tsx</code></td><td>completed</td><td>汇总 + 排序表</td></tr>
+<tr><td><code>ResultPanel</code></td><td><code>components/result/ResultPanel.tsx</code></td><td>detail</td><td>单文件审核详情</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3.3 Workflow Step 状态机</h3>
+
+<div class="diagram-title">步骤状态机 -- idle / active / completed / error</div>
+<div class="diagram">
+
+  <div class="state-diagram">
+    <div class="state-box">
+      <div class="state-name">idle</div>
+      <div class="state-desc">灰色，静默</div>
+    </div>
+    <div class="state-box state-active">
+      <div class="state-name">active</div>
+      <div class="state-desc">蓝色脉冲，进度环</div>
+    </div>
+    <div class="state-box" style="border-color:#16a34a;">
+      <div class="state-name">completed</div>
+      <div class="state-desc">绿色，对勾缩放动画</div>
+    </div>
+    <div class="state-box" style="border-color:#dc2626;">
+      <div class="state-name">error</div>
+      <div class="state-desc">红色，抖动 + 高亮</div>
+    </div>
+  </div>
+
+  <ul class="state-transitions">
+    <li><code>[*]</code> --> <code>idle</code> -- 初始状态</li>
+    <li><code>idle</code> --> <code>active</code> -- SSE step.active 触发</li>
+    <li><code>active</code> --> <code>completed</code> -- SSE step.completed 触发</li>
+    <li><code>active</code> --> <code>error</code> -- SSE step.error 触发</li>
+    <li><code>error</code> --> <code>active</code> -- retry 重试</li>
+    <li><code>completed</code> --> <code>[*]</code> -- 终态</li>
+  </ul>
+
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 4. 数据流 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">4.</span> 数据流</h2>
+
+<h3>4.1 完整请求链路</h3>
+
+<div class="diagram-title">时序图 -- 用户浏览器到 Dify API 的完整链路</div>
+<div class="diagram" style="padding:16px;">
+<div class="table-wrapper" style="margin:0;box-shadow:none;">
+<table class="seq-table">
+<thead>
+  <tr><th>序号</th><th>发送方</th><th>接收方</th><th>消息</th></tr>
+</thead>
+<tbody>
+  <tr><td>1</td><td class="seq-from">User (Browser)</td><td class="seq-to">Next.js Frontend</td><td class="seq-msg">选择 PDF + 日期</td></tr>
+  <tr><td>2</td><td class="seq-from">Next.js Frontend</td><td class="seq-to">Route Handler</td><td class="seq-msg">POST /api/audit (multipart)</td></tr>
+  <tr><td colspan="4" class="seq-alt-header">分支 A: DEMO_MODE = true</td></tr>
+  <tr><td>3a</td><td class="seq-from">Route Handler</td><td class="seq-to">Mock Engine</td><td class="seq-msg">进入 Mock 模式</td></tr>
+  <tr><td>4a</td><td class="seq-from">Mock Engine</td><td class="seq-to">Frontend</td><td class="seq-msg">SSE: {step, status: "active"} (循环 10 步, 每步 1-3s 延迟)</td></tr>
+  <tr><td>5a</td><td class="seq-from">Mock Engine</td><td class="seq-to">Frontend</td><td class="seq-msg">SSE: {step, status: "completed"}</td></tr>
+  <tr><td>6a</td><td class="seq-from">Mock Engine</td><td class="seq-to">Frontend</td><td class="seq-msg">SSE: {step: 10, result: AuditResult}</td></tr>
+  <tr><td colspan="4" class="seq-alt-header">分支 B: DEMO_MODE = false</td></tr>
+  <tr><td>3b</td><td class="seq-from">Route Handler</td><td class="seq-to">Dify Proxy</td><td class="seq-msg">转发请求</td></tr>
+  <tr><td>4b</td><td class="seq-from">Dify Proxy</td><td class="seq-to">Dify API</td><td class="seq-msg">POST /v1/workflows/run</td></tr>
+  <tr><td>5b</td><td class="seq-from">Dify API</td><td class="seq-to">Dify Proxy</td><td class="seq-msg">workflow events stream</td></tr>
+  <tr><td>6b</td><td class="seq-from">Dify Proxy</td><td class="seq-to">Frontend</td><td class="seq-msg">SSE: 翻译为步骤事件 (每个 workflow node)</td></tr>
+  <tr><td>7b</td><td class="seq-from">Dify Proxy</td><td class="seq-to">Frontend</td><td class="seq-msg">SSE: {step: 10, result: AuditResult}</td></tr>
+  <tr><td colspan="4" style="border-bottom:none;"></td></tr>
+  <tr><td>End</td><td class="seq-from">Frontend</td><td class="seq-to">User</td><td class="seq-msg">更新步骤状态 + 展示结果</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h3>4.2 SSE Event Schema（实际实现）</h3>
+
+<pre><code>// SSE events 使用命名事件类型（非仅 "data:"）
+// event: step_start | step_done | result | error | done
+
+// 步骤进度: event: step_start / step_done
+{ step: number; message: string; durationMs?: number }
+
+// 最终结果: event: result
+interface AuditResult {
+  receptionType: string;          // "公务接待" | "商务接待"
+  suggestion: "通过" | "人工复核" | "不通过";
+  amount?: number;                // e.g. 470
+  pageCount?: number;             // e.g. 5
+  subDocuments?: SubDocument[];   // 单据拆分识别结果
+  issues: AuditIssue[];
+  totalDuration: number;          // seconds
+}
+
+interface SubDocument {
+  type: string;       // e.g. "费用报销单"
+  found: boolean;
+  page?: number;      // 合并 PDF 中的起始页
+  pageCount?: number; // 子单据占页数
+}
+
+interface AuditIssue {
+  severity: "error" | "warning" | "info";
+  message: string;
+  detail?: string;    // 展开说明
+}</code></pre>
+
+<h3>4.3 Dify 事件翻译</h3>
+
+<p>Route Handler 将 Dify 工作流 SSE 事件翻译为我们的简化协议:</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>Dify 事件</th><th>我方事件</th><th>映射方式</th></tr></thead>
+<tbody>
+<tr><td><code>node_started</code></td><td><code>step_start</code></td><td><code>matchStepByTitle(node.title)</code> --> step number</td></tr>
+<tr><td><code>node_finished</code></td><td><code>step_done</code></td><td>+ <code>durationMs</code> from elapsed_time</td></tr>
+<tr><td><code>workflow_finished</code></td><td><code>result</code></td><td><code>parseDifyOutput(outputs)</code> --> AuditResult</td></tr>
+<tr><td>connection error</td><td><code>error</code></td><td>error message 转发</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>内部 Dify 节点 (start, end, if-else, variable-aggregator, answer) 通过 <code>SKIP_NODE_TYPES</code> 过滤。</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 5. 技术栈 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">5.</span> 技术栈</h2>
+
+<h3>5.1 技术选型（实际使用）</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>层级</th><th>技术</th><th>版本</th><th>选型理由</th></tr></thead>
+<tbody>
+<tr><td>Framework</td><td>Next.js</td><td>16.1.6</td><td>App Router + Turbopack + Route Handlers</td></tr>
+<tr><td>Runtime</td><td>React</td><td>19.2.3</td><td>Concurrent features + Server Components</td></tr>
+<tr><td>Styling</td><td>TailwindCSS</td><td>4.x</td><td>CSS variable system, utility-first</td></tr>
+<tr><td>Components</td><td>shadcn/ui</td><td>latest</td><td>无锁定、可定制（仅 cn() utility 使用）</td></tr>
+<tr><td>Animation</td><td>Framer Motion</td><td>12.35.2</td><td>Layout animations + detail modal overlay（AnimatePresence 已从阶段过渡中移除; 见 D-015）</td></tr>
+<tr><td>Icons</td><td>Lucide React</td><td>latest</td><td>Tree-shakeable，约 20 个图标使用</td></tr>
+<tr><td>State</td><td>useReducer</td><td>--</td><td>12 action types, 4 phases, 单状态树</td></tr>
+<tr><td>Package Manager</td><td>pnpm</td><td>10.28.2</td><td>快速、磁盘高效</td></tr>
+<tr><td>Node</td><td>Node.js</td><td>25.6.0</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>5.2 未使用的技术（及原因）</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>技术</th><th>排除原因</th></tr></thead>
+<tbody>
+<tr><td>Database (Prisma/Drizzle)</td><td>无状态 Demo，无需持久化</td></tr>
+<tr><td>Auth (NextAuth/Clerk)</td><td>无用户体系</td></tr>
+<tr><td>External state (Redux/Zustand)</td><td>单页面，React hooks 足够</td></tr>
+<tr><td>Testing framework</td><td>Demo 项目，手动验证优先</td></tr>
+<tr><td>i18n</td><td>v1.0 仅中文</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6. 目录结构 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">6.</span> 目录结构 (v3.0 actual)</h2>
+
+<pre><code>21-dify-demo/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                          # Root layout (Sidebar + content area)
+│   │   ├── page.tsx                            # Agent list home (8 agents, search/filter)
+│   │   ├── globals.css                         # Theme tokens + light theme + animations
+│   │   ├── audit/page.tsx                      # v2 expense audit (4-phase progressive)
+│   │   ├── workflows/
+│   │   │   ├── page.tsx                        # Workflow list (card grid)
+│   │   │   └── expense-audit/page.tsx          # Workflow editor (GoldenRatio + n8n canvas)
+│   │   ├── templates/page.tsx                  # Template gallery (category tabs)
+│   │   ├── knowledge/page.tsx                  # Knowledge base list (5 KBs + stats)
+│   │   ├── history/page.tsx                    # History (dual tab: convos + audit traces)
+│   │   ├── settings/page.tsx                   # Settings (double sidebar, 4 sections)
+│   │   └── api/audit/route.ts                  # POST handler: dual-mode SSE
+│   ├── components/
+│   │   ├── workspace/
+│   │   │   └── Sidebar.tsx                     # Collapsible sidebar (64/256px)
+│   │   ├── layout/
+│   │   │   ├── AnimatedBackground.tsx          # n8n SVG node flow (audit only)
+│   │   │   ├── Header.tsx                      # Brand header (audit only)
+│   │   │   └── StatsBar.tsx                    # KPI cards (audit only)
+│   │   ├── upload/
+│   │   │   └── UploadZone.tsx                  # Dropzone + file table + date
+│   │   ├── workflow/
+│   │   │   └── WorkflowPipeline.tsx            # 10-step pipeline
+│   │   ├── batch/
+│   │   │   ├── BatchProgress.tsx               # Batch progress tracker
+│   │   │   └── BatchResultsDashboard.tsx       # Results dashboard
+│   │   └── result/
+│   │       ├── ResultPanel.tsx                 # Single file detail
+│   │       └── IssueCard.tsx                   # Issue item
+│   └── lib/
+│       ├── types.ts                            # Core TS types (StepState, AuditResult, etc.)
+│       ├── constants.ts                        # Workflow steps, badges, app config
+│       ├── mock-data.ts                        # 5 SRBG cases + step delays
+│       ├── dify-client.ts                      # Server-side Dify API client
+│       ├── workflows.ts                        # Workflow + Template data definitions
+│       ├── knowledge.ts                        # KnowledgeBase interface + 5 KBs
+│       ├── history.ts                          # ConversationRecord + AuditTrace + mock data
+│       └── utils.ts                            # cn() utility
+├── doc/00_project/initiative_21-dify-demo/     # PDCA docs
+├── .env.example
+├── next.config.ts                              # Security headers
+├── tsconfig.json
+├── package.json
+└── pnpm-lock.yaml</code></pre>
+
+<p><strong>源代码总量</strong>: ~8,500+ 行 TypeScript/CSS，20+ 源文件。<br>
+<strong>路由</strong>: 10 个（8 用户页面 + 1 API + 1 404）。</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 7. API 设计 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">7.</span> API 设计</h2>
+
+<h3>7.1 接口列表</h3>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>方法</th><th>路径</th><th>Content-Type</th><th>描述</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td><code>/api/audit</code></td><td><code>multipart/form-data</code></td><td>提交 PDF + 日期，返回 SSE 流</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7.2 请求格式</h3>
+
+<pre><code>POST /api/audit HTTP/1.1
+Content-Type: multipart/form-data
+
+Fields:
+  file: &lt;PDF binary&gt;           (required, max 20MB)
+  auditDate: "2025-07-09"      (optional, default today)
+  fileIndex: 0                 (optional, batch index)</code></pre>
+
+<h3>7.3 响应格式 (SSE Stream)</h3>
+
+<pre><code>Content-Type: text/event-stream
+
+event: step_start
+data: {"stepId":1,"title":"报销资料输入"}
+
+event: step_done
+data: {"stepId":1,"title":"报销资料输入"}
+
+event: result
+data: {"receptionType":"公务接待","suggestion":"人工复核","issues":[...]}
+
+event: done
+data: {}</code></pre>
+
+<h3>7.4 Mock Engine 行为</h3>
+
+<p>Mock Engine 模拟真实工作流的时间开销，为离线演示场景设计:</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>模拟延迟</th><th>描述</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>1.0s</td><td>报销资料输入</td></tr>
+<tr><td>2</td><td>1.5s</td><td>报销过期日判定</td></tr>
+<tr><td>3</td><td>2.0s</td><td>报销单据拆分</td></tr>
+<tr><td>4</td><td>2.5s</td><td>报销单据识别 (OCR, 最慢)</td></tr>
+<tr><td>5</td><td>1.5s</td><td>提取接待类型信息</td></tr>
+<tr><td>6</td><td>1.0s</td><td>判断接待类型</td></tr>
+<tr><td>7</td><td>2.0s</td><td>公务接待单据审核</td></tr>
+<tr><td>8</td><td>1.5s</td><td>公务接待审核内容汇总</td></tr>
+<tr><td>9</td><td>1.0s</td><td>审核结果编排</td></tr>
+<tr><td>10</td><td>0.5s</td><td>审核结果输出</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>总计约 14.5s，模拟真实审核耗时，为演示提供节奏感。</p>
+
+<h3>7.5 Dify API 对接</h3>
+
+<div class="diagram-title">Dify API 调用链路</div>
+<div class="diagram">
+
+  <div class="diagram-group">
+    <div class="diagram-group-label">Next.js Route Handler</div>
+    <div class="diagram-flow-row">
+      <div class="diagram-node">Incoming Request</div>
+      <span class="diagram-arrow">--></span>
+      <div class="diagram-node">Upload PDF to Dify</div>
+      <span class="diagram-arrow">--></span>
+      <div class="diagram-node">Trigger Workflow</div>
+      <span class="diagram-arrow">--></span>
+      <div class="diagram-node">Event Translator</div>
+    </div>
+  </div>
+
+  <div class="diagram-flow-row" style="justify-content:center;margin:8px 0;">
+    <span class="diagram-arrow">|</span>
+  </div>
+
+  <div class="diagram-group">
+    <div class="diagram-group-label">Dify API (agentdemo.hegui.cn)</div>
+    <div class="diagram-flow-row">
+      <div class="diagram-node">/v1/files/upload<small>POST multipart</small></div>
+      <span class="diagram-arrow">-- file_id --></span>
+      <div class="diagram-node">/v1/workflows/run<small>POST JSON</small></div>
+      <span class="diagram-arrow">-- workflow events --></span>
+      <div class="diagram-node">Event Translator<small>SSE StepEvent --> Browser</small></div>
+    </div>
+  </div>
+
+</div>
+
+<p><strong>Dify API 调用流程</strong>:</p>
+<ol>
+  <li><code>POST /v1/files/upload</code> -- 上传 PDF 文件，获取 <code>file_id</code></li>
+  <li><code>POST /v1/workflows/run</code> -- 触发工作流，传入 <code>file_id</code> + <code>date</code></li>
+  <li>Dify 返回 workflow node 执行事件，Proxy 翻译为 10-step SSE 事件</li>
+</ol>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 8. 环境配置 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">8.</span> 环境配置</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>变量</th><th>默认值</th><th>必需</th><th>描述</th></tr></thead>
+<tbody>
+<tr><td><code>DEMO_MODE</code></td><td><code>true</code></td><td>否</td><td><code>true</code> = Mock 模式, <code>false</code> = Live Dify API</td></tr>
+<tr><td><code>DIFY_API_URL</code></td><td><code>https://agentdemo.hegui.cn</code></td><td>否</td><td>Dify 工作流 API 地址</td></tr>
+<tr><td><code>DIFY_API_KEY</code></td><td>(empty)</td><td>Live 模式必需</td><td>Dify API Bearer Token</td></tr>
+<tr><td><code>NEXT_PUBLIC_APP_NAME</code></td><td><code>路桥报销审核智能体</code></td><td>否</td><td>前端显示的应用名称</td></tr>
+<tr><td><code>DIFY_FILE_INPUT_VAR</code></td><td><code>file</code></td><td>否</td><td>Dify workflow file input variable name</td></tr>
+<tr><td><code>DIFY_DATE_INPUT_VAR</code></td><td><code>audit_date</code></td><td>否</td><td>Dify workflow date input variable name</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>安全约束</strong>:</p>
+<ul>
+  <li><code>DIFY_API_KEY</code> 仅在 <code>.env.local</code> 中配置，仅服务端 Route Handler 可访问</li>
+  <li>前端代码不使用 <code>NEXT_PUBLIC_DIFY_API_KEY</code> 前缀，确保密钥不泄露</li>
+  <li><code>.env.local</code> 已加入 <code>.gitignore</code></li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 9. 部署架构 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">9.</span> 部署架构</h2>
+
+<div class="diagram-title">部署拓扑 -- 开发 / 生产 / 外部</div>
+<div class="diagram">
+  <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;">
+
+    <div class="diagram-group" style="flex:1;min-width:160px;">
+      <div class="diagram-group-label">Development</div>
+      <div class="diagram-node">pnpm dev<small>localhost:3000</small></div>
+    </div>
+
+    <div class="diagram-group" style="flex:2;min-width:240px;">
+      <div class="diagram-group-label">Production Options</div>
+      <div class="diagram-nodes-grid">
+        <div class="diagram-node">Vercel<small>Serverless Functions</small></div>
+        <div class="diagram-node">Cloudflare Pages<small>Edge Functions</small></div>
+      </div>
+    </div>
+
+    <div class="diagram-group" style="flex:1;min-width:160px;">
+      <div class="diagram-group-label">External</div>
+      <div class="diagram-node">Dify Workflow<small>agentdemo.hegui.cn</small></div>
+    </div>
+
+  </div>
+  <p style="text-align:center;font-size:12px;color:var(--text-muted);margin:12px 0 0;">所有环境均通过 HTTPS 对接 Dify Workflow API</p>
+</div>
+
+<p><strong>部署方式</strong>:</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>平台</th><th>构建命令</th><th>输出</th><th>API Routes</th></tr></thead>
+<tbody>
+<tr><td>Vercel</td><td><code>pnpm build</code></td><td><code>.next/</code></td><td>Serverless Functions (auto)</td></tr>
+<tr><td>Cloudflare Pages</td><td><code>pnpm build</code></td><td><code>.next/</code></td><td>Edge Functions (via <code>@cloudflare/next-on-pages</code>)</td></tr>
+<tr><td>Static Export</td><td><code>next export</code> (不推荐)</td><td><code>out/</code></td><td>不支持（需外部 API）</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>推荐</strong>: Vercel 部署最简，Route Handlers 自动转为 Serverless Functions，零配置。</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 10. 性能预算 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">10.</span> 性能预算</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>指标</th><th>目标</th><th>测量方式</th></tr></thead>
+<tbody>
+<tr><td>LCP</td><td>&lt; 2.0s</td><td>Lighthouse</td></tr>
+<tr><td>FCP</td><td>&lt; 1.5s</td><td>Lighthouse</td></tr>
+<tr><td>CLS</td><td>&lt; 0.1</td><td>Lighthouse</td></tr>
+<tr><td>Bundle (gzipped)</td><td>&lt; 500KB</td><td><code>next build</code> output</td></tr>
+<tr><td>Animation FPS</td><td>60fps</td><td>Chrome DevTools Performance</td></tr>
+<tr><td>SSE latency</td><td>&lt; 100ms per event</td><td>Network tab</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>优化策略</strong>:</p>
+<ul>
+  <li>Next.js App Router 自动 code splitting</li>
+  <li>shadcn/ui 按需导入，无全量打包</li>
+  <li>Framer Motion tree-shaking via ES module imports（LazyMotion 已移除; 普通 div 阶段过渡减少动画 bundle 体积）</li>
+  <li>Lucide React tree-shaking，仅打包使用的图标</li>
+  <li>图片/字体使用 <code>next/image</code> + <code>next/font</code></li>
+</ul>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 11. 安全考量 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">11.</span> 安全考量</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>关注点</th><th>缓解措施</th></tr></thead>
+<tbody>
+<tr><td>API Key 泄露</td><td>Key 仅存于服务端 <code>.env.local</code>，通过 Route Handler 代理访问</td></tr>
+<tr><td>文件上传攻击</td><td>服务端校验 MIME type (application/pdf)，限制 20MB</td></tr>
+<tr><td>XSS</td><td>React 默认 escape，不使用 <code>dangerouslySetInnerHTML</code></td></tr>
+<tr><td>CORS</td><td>Route Handler 同源，无跨域问题</td></tr>
+<tr><td>依赖供应链</td><td>pnpm lockfile + <code>pnpm audit</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 12. 10 步工作流定义 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">12.</span> 10 步工作流定义</h2>
+
+<p>供前端常量表使用，单一定义源（<code>lib/constants.ts</code>）。</p>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>步骤</th><th>Key</th><th>名称 (CN)</th><th>名称 (EN)</th><th>图标 (Lucide)</th><th>预估耗时</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>document_input</code></td><td>报销资料输入</td><td>Document Input</td><td><code>FileUp</code></td><td>1.0s</td></tr>
+<tr><td>2</td><td><code>expiry_check</code></td><td>报销过期日判定</td><td>Expiry Check</td><td><code>Calendar</code></td><td>1.5s</td></tr>
+<tr><td>3</td><td><code>receipt_split</code></td><td>报销单据拆分</td><td>Receipt Splitting</td><td><code>Scissors</code></td><td>2.0s</td></tr>
+<tr><td>4</td><td><code>receipt_ocr</code></td><td>报销单据识别</td><td>Receipt Recognition</td><td><code>Scan</code></td><td>2.5s</td></tr>
+<tr><td>5</td><td><code>extract_info</code></td><td>提取接待类型信息</td><td>Extract Reception Info</td><td><code>Search</code></td><td>1.5s</td></tr>
+<tr><td>6</td><td><code>classify_type</code></td><td>判断接待类型</td><td>Determine Reception Type</td><td><code>GitBranch</code></td><td>1.0s</td></tr>
+<tr><td>7</td><td><code>audit_docs</code></td><td>公务接待单据审核</td><td>Official Reception Audit</td><td><code>Shield</code></td><td>2.0s</td></tr>
+<tr><td>8</td><td><code>audit_summary</code></td><td>公务接待审核内容汇总</td><td>Audit Summary</td><td><code>ClipboardList</code></td><td>1.5s</td></tr>
+<tr><td>9</td><td><code>result_format</code></td><td>审核结果编排</td><td>Result Arrangement</td><td><code>Layout</code></td><td>1.0s</td></tr>
+<tr><td>10</td><td><code>result_output</code></td><td>审核结果输出</td><td>Result Output</td><td><code>FileCheck</code></td><td>0.5s</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 13. 决策日志 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">13.</span> 决策日志</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>#</th><th>日期</th><th>决策</th><th>备选方案</th><th>决策理由</th></tr></thead>
+<tbody>
+<tr><td>D-001</td><td>2026-03-10</td><td>单页面流转（非多页路由）</td><td>(A) 多页路由 /upload, /workflow, /result (B) 单页三段式 (C) 全屏步进式</td><td>演示场景需要连贯体验，单页避免页面跳转中断动画节奏</td></tr>
+<tr><td>D-002</td><td>2026-03-10</td><td>SSE 而非 WebSocket</td><td>(A) WebSocket (B) SSE (C) Polling</td><td>SSE 单向推送足够，Next.js Route Handler 原生支持，无需额外基础设施</td></tr>
+<tr><td>D-003</td><td>2026-03-10</td><td>Mock + Live 双模式</td><td>(A) 仅 Live (B) 仅 Mock (C) 双模式切换</td><td>客户现场可能无网络，Mock 模式保证离线可演示</td></tr>
+<tr><td>D-004</td><td>2026-03-10</td><td>React hooks（无外部状态库）</td><td>(A) Zustand (B) Jotai (C) 纯 hooks</td><td>单页面状态简单，10 个步骤的状态用 useReducer 管理足够</td></tr>
+<tr><td>D-005</td><td>2026-03-10</td><td>Framer Motion（非 CSS 动画）</td><td>(A) 纯 CSS/TailwindCSS animate (B) Framer Motion (C) React Spring</td><td>需要编排复杂的步骤序列动画 + 手势交互，Framer Motion 声明式 API 最适合</td></tr>
+<tr><td>D-006</td><td>2026-03-11</td><td>n8n 节点流背景（非粒子）</td><td>(A) Canvas 粒子 (B) n8n 节点流 SVG (C) Lottie 动画</td><td>节点+虚线连接更贴合"AI 工作流"产品主题，SVG 方案零依赖、GPU 友好</td></tr>
+<tr><td>D-007</td><td>2026-03-11</td><td>fetch+ReadableStream（非 EventSource）</td><td>(A) EventSource API (B) fetch+ReadableStream</td><td>EventSource 不支持 POST body，需要命名 event types (step_start/step_done/result)，fetch stream 更灵活</td></tr>
+<tr><td>D-008</td><td>2026-03-11</td><td>Dify 事件翻译层</td><td>直接转发 vs 翻译</td><td>Dify 返回 node_started/node_finished 等细粒度事件，需翻译为 10-step 简化协议；用 matchStepByTitle() 模糊匹配节点标题到步骤编号</td></tr>
+<tr><td>D-009</td><td>2026-03-12</td><td>v3 多页平台（非保持单页）</td><td>(A) 保持单页 + drawer 展示 (B) 多页平台 + Sidebar 导航</td><td>客户需要看到完整平台形态而非单个 Demo；多页路由更接近真实 B2B SaaS 产品</td></tr>
+<tr><td>D-010</td><td>2026-03-12</td><td>双色品牌系统</td><td>(A) 单色 (B) 双色分离</td><td>Sky Blue (平台) + Jade Teal (智能体) 双色分离可清晰区分平台功能与智能体功能，增强品牌层次感</td></tr>
+<tr><td>D-011</td><td>2026-03-12</td><td>Light theme 强制（非 dark/toggle）</td><td>(A) 保留 dark 默认 (B) Light only (C) Toggle</td><td>B2B 企业客户偏好亮色系，会议室/日光环境下 light theme 可读性更好</td></tr>
+<tr><td>D-012</td><td>2026-03-12</td><td>GoldenRatio 38.2/61.8 布局</td><td>(A) 等分 50/50 (B) Golden ratio (C) 固定像素</td><td>黄金比例在视觉上形成自然平衡，左侧配置面板不宜过宽抢占画布空间</td></tr>
+<tr><td>D-013</td><td>2026-03-12</td><td>History 双 Tab（对话+审计）</td><td>(A) 仅对话记录 (B) 双 Tab</td><td>合规场景需要决策审计追踪（谁触发了什么工作流 + 每步结果），对话记录和审计追踪是互补视角</td></tr>
+<tr><td>D-014</td><td>2026-03-12</td><td>Settings 双侧栏</td><td>(A) 单页折叠 (B) Tab 切换 (C) 二级侧栏</td><td>4 个设置分区（模型/数据/通知/安全）内容量大，二级侧栏可保持导航上下文同时展示详细配置</td></tr>
+<tr><td>D-015</td><td>2026-03-13</td><td>移除 AnimatePresence 阶段过渡</td><td>(A) 保留 AnimatePresence mode="wait" (B) 切换 mode="sync" (C) 移除 AnimatePresence，使用普通 div 切换</td><td>framer-motion 12 + React 19 下 AnimatePresence mode="wait" 的 exit/enter 排序失效（opacity 卡在 0）；mode="sync" 导致视觉重叠混乱；普通 div 条件渲染可靠，组件级动画（stagger、计数器、slide-in 行）提供流畅 UX，无需阶段级编排</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 14. 应用状态机 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">14.</span> 应用状态机 (v2.0 -- 仅 <code>/audit</code> 路由)</h2>
+
+<div class="diagram-title">阶段状态机 -- upload / running / completed / detail</div>
+<div class="diagram">
+
+  <div class="state-diagram">
+    <div class="state-box state-active">
+      <div class="state-name">upload</div>
+      <div class="state-desc">UploadZone + StatsBar + Footer<br>files[] 通过 ADD_FILES / REMOVE_FILE 管理</div>
+    </div>
+    <div class="state-box state-active">
+      <div class="state-name">running</div>
+      <div class="state-desc">WorkflowPipeline + BatchProgress<br>逐文件处理: FILE_START --> STEP_ACTIVE --> STEP_COMPLETED --> FILE_COMPLETED</div>
+    </div>
+    <div class="state-box state-active">
+      <div class="state-name">completed</div>
+      <div class="state-desc">BatchResultsDashboard<br>汇总卡片 + 可排序结果表</div>
+    </div>
+    <div class="state-box state-active">
+      <div class="state-name">detail</div>
+      <div class="state-desc">ResultPanel overlay (backdrop blur)<br>单文件审核详情 + 问题列表</div>
+    </div>
+  </div>
+
+  <ul class="state-transitions">
+    <li><code>[*]</code> --> <code>upload</code> -- 初始状态</li>
+    <li><code>upload</code> --> <code>running</code> -- START_BATCH (点击 CTA)</li>
+    <li><code>running</code> --> <code>completed</code> -- BATCH_DONE (所有文件处理完毕)</li>
+    <li><code>completed</code> --> <code>detail</code> -- VIEW_DETAIL (点击文件行)</li>
+    <li><code>detail</code> --> <code>completed</code> -- CLOSE_DETAIL (点击遮罩/X)</li>
+    <li><code>completed</code> --> <code>upload</code> -- RESET</li>
+    <li><code>detail</code> --> <code>upload</code> -- RESET (via ResultPanel)</li>
+  </ul>
+
+</div>
+
+<p><strong>Reducer actions (共 12 个)</strong>:<br>
+<code>ADD_FILES</code> | <code>REMOVE_FILE</code> | <code>START_BATCH</code> | <code>FILE_START</code> | <code>STEP_ACTIVE</code> | <code>STEP_COMPLETED</code> | <code>FILE_COMPLETED</code> | <code>FILE_ERROR</code> | <code>BATCH_DONE</code> | <code>VIEW_DETAIL</code> | <code>CLOSE_DETAIL</code> | <code>RESET</code></p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 15. 性能基线 -->
+<!-- ============================================================ -->
+
+<h2><span class="section-num">15.</span> 性能基线 (v2.1)</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>指标</th><th>数值</th><th>目标</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td>Bundle JS (gzipped)</td><td>217KB</td><td>&lt; 500KB</td><td>OK (43%)</td></tr>
+<tr><td>Largest chunk (gz)</td><td>68.5KB</td><td>--</td><td>Framer Motion + React</td></tr>
+<tr><td>Build time</td><td>~3s</td><td>&lt; 10s</td><td>OK</td></tr>
+<tr><td>Total JS chunks</td><td>7</td><td>--</td><td>Turbopack auto-split</td></tr>
+<tr><td>CSS</td><td>~415 lines</td><td>--</td><td>Single globals.css</td></tr>
+<tr><td>Source files</td><td>12</td><td>--</td><td></td></tr>
+<tr><td>Total LOC</td><td>~4,500</td><td>--</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 变更日志 -->
+<!-- ============================================================ -->
+
+<h2>变更日志</h2>
+
+<div class="table-wrapper">
+<table>
+<thead><tr><th>日期</th><th>版本</th><th>变更内容</th></tr></thead>
+<tbody>
+<tr><td>2026-03-10</td><td>v1.0</td><td>初始架构文档</td></tr>
+<tr><td>2026-03-10</td><td>v2.0</td><td>批量审核系统, 4 阶段状态机, 实际组件层级</td></tr>
+<tr><td>2026-03-10</td><td>v2.1</td><td>Swarm 优化, 安全头, 性能基线</td></tr>
+<tr><td>2026-03-11</td><td>v2.2</td><td>Dify API 客户端, 双模式 SSE, n8n SVG 背景, SubDocument 模型</td></tr>
+<tr><td>2026-03-12</td><td>v3.0</td><td><strong>平台迁移</strong>: 8 页面, Sidebar 导航, 双色品牌, 数据层 (knowledge/history/workflows), GoldenRatio 编辑器, 双侧栏设置, 决策 D-009~D-014</td></tr>
+<tr><td>2026-03-13</td><td>v3.1</td><td><strong>动画架构</strong>: 移除阶段过渡 AnimatePresence (D-015), 移除 LazyMotion, SubDocBar 打磨 (72px bar, 6px height, bold counts), 表格列宽再平衡</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<footer style="text-align:center; padding:60px 20px 40px; color:#9B9B9D; font-size:13px; line-height:2.2;">
+    <p>灵阙智能体平台 v3.1 -- 系统架构文档</p>
+    <p>Maurice | maurice_wen@proton.me</p>
+    <p style="font-size:12px; margin-top:8px;">Generated 2026-03-13 | Source: SYSTEM_ARCHITECTURE.md v3.1</p>
+</footer>
+
+</body>
+</html>

@@ -36,7 +36,7 @@
 | # | Item | Category | Impact | Effort | Status |
 |---|------|----------|--------|--------|--------|
 | H1 | `useTransition()` for phase state updates | Performance | Non-blocking phase transitions | 1h | done |
-| H2 | TanStack Virtual for 100+ file list | Performance | DOM nodes 100→12, 90% paint reduction | 3-4h | pending |
+| H2 | TanStack Virtual for 100+ file list | Performance | DOM nodes 100→12, 90% paint reduction | 3-4h | done |
 | H3 | GPU acceleration: `will-change` + `transform3d(0,0,0)` on animated elements | Performance | 60fps glassmorphism | 1h | done |
 | H4 | `layoutId` for phase container transitions | Performance | CLS < 0.05, smooth morphing | 1-2h | pending |
 | H5 | Dark theme contrast audit (4.5:1 minimum on glass panels) | Accessibility | WCAG AA compliance | 2h | done |
@@ -61,16 +61,16 @@
 
 | # | Item | Category | Impact | Effort | Status |
 |---|------|----------|--------|--------|--------|
-| M1 | Dynamic import for ResultPanel + IssueCard | Performance | Code splitting, smaller initial chunk | 1h | pending |
-| M2 | React.memo on phase components | Performance | Reduce re-renders by 70% | 1h | pending |
+| M1 | Dynamic import for ResultPanel + BatchResultsDashboard | Performance | Code splitting, smaller initial chunk | 1h | done |
+| M2 | React.memo on StepCard + IssueCard | Performance | Reduce re-renders during workflow | 1h | done |
 | M3 | Bundle analyzer (Next.js 16.1 experimental) | Performance | Identify bloat sources | 30min | pending |
 | M4 | Web Worker for PDF metadata extraction | Performance | Main thread freed | 4h | pending |
 | M5 | `content-visibility: auto` for off-screen phases | Performance | Skip rendering hidden phases | 30min | pending |
-| M6 | Skip-to-main-content link | Accessibility | Screen reader navigation | 15min | pending |
+| M6 | Skip-to-main-content link | Accessibility | Screen reader navigation | 15min | done |
 | M7 | DOMPurify for rendering API responses | Security | XSS prevention in result display | 1h | pending |
 | M8 | Docker air-gapped deployment hardening | Security | SOE intranet security | 4h | pending |
 | M9 | Date format: Chinese locale (YYYY年MM月DD日) | SOE Design | Enterprise convention | 30min | pending |
-| M10 | Table text alignment: right-align numerics | SOE Design | Chinese business convention | 15min | pending |
+| M10 | Table text alignment: right-align numerics | SOE Design | Chinese business convention | 15min | done |
 
 ---
 
