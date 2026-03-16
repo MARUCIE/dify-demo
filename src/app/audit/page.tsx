@@ -10,7 +10,12 @@ import type {
   StepState, AuditResult, AppPhase, BatchFile, BatchSummary,
 } from '@/lib/types';
 import { countSubDocVerdicts } from '@/lib/sub-doc-analysis';
+import { clientMockStream } from '@/lib/client-mock-stream';
+import { isDifyDirectAvailable, difyDirectStream } from '@/lib/dify-direct';
 import { WORKFLOW_STEPS, TOTAL_STEPS } from '@/lib/constants';
+
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const USE_DIRECT = isDifyDirectAvailable();
 import { EASE_DEFAULT } from '@/lib/animations';
 import Header from '@/components/layout/Header';
 import StatsBar from '@/components/layout/StatsBar';
@@ -255,7 +260,177 @@ export default function Home() {
     dispatch({ type: 'REMOVE_FILE', id });
   }, []);
 
-  // Batch audit runner — calls /api/audit SSE endpoint per file
+  // Process events from client-side Dify direct stream (browser -> Dify API)
+  const processDifyDirect = useCallback(async (
+    batchFile: BatchFile,
+    fileStart: number,
+  ): Promise<void> => {
+    let fileResult: AuditResult | null = null;
+    const auditDate = new Date().toISOString().split('T')[0];
+    try {
+      for await (const { event, data } of difyDirectStream(batchFile.file, auditDate)) {
+        switch (event) {
+          case 'step_start': {
+            const sid = Number(data.stepId);
+            if (sid >= 1 && sid <= TOTAL_STEPS) {
+              dispatch({ type: 'STEP_ACTIVE', fileId: batchFile.id, stepId: sid, now: performance.now() });
+            }
+            break;
+          }
+          case 'step_done': {
+            const sid = Number(data.stepId);
+            if (sid >= 1 && sid <= TOTAL_STEPS) {
+              dispatch({ type: 'STEP_COMPLETED', fileId: batchFile.id, stepId: sid, now: performance.now() });
+            }
+            break;
+          }
+          case 'result':
+            fileResult = data as unknown as AuditResult;
+            break;
+          case 'error':
+            dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: String(data.message) });
+            return;
+        }
+      }
+    } catch (err) {
+      dispatch({
+        type: 'FILE_ERROR',
+        fileId: batchFile.id,
+        error: err instanceof Error ? err.message : 'Direct Dify call failed',
+      });
+      return;
+    }
+    const fileDuration = (performance.now() - fileStart) / 1000;
+    if (fileResult) {
+      dispatch({ type: 'FILE_COMPLETED', fileId: batchFile.id, result: { ...fileResult, totalDuration: fileDuration } });
+    } else {
+      dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No result received from Dify' });
+    }
+  }, []);
+
+  // Process mock events from client-side generator (no API call)
+  const processMockEvents = useCallback(async (
+    fileId: string,
+    fileIndex: number,
+    fileStart: number,
+  ): Promise<void> => {
+    let fileResult: AuditResult | null = null;
+    for await (const { event, data } of clientMockStream(fileIndex)) {
+      switch (event) {
+        case 'step_start': {
+          const sid = Number(data.stepId);
+          if (sid >= 1 && sid <= TOTAL_STEPS) {
+            dispatch({ type: 'STEP_ACTIVE', fileId, stepId: sid, now: performance.now() });
+          }
+          break;
+        }
+        case 'step_done': {
+          const sid = Number(data.stepId);
+          if (sid >= 1 && sid <= TOTAL_STEPS) {
+            dispatch({ type: 'STEP_COMPLETED', fileId, stepId: sid, now: performance.now() });
+          }
+          break;
+        }
+        case 'result':
+          fileResult = data as unknown as AuditResult;
+          break;
+      }
+    }
+    const fileDuration = (performance.now() - fileStart) / 1000;
+    if (fileResult) {
+      dispatch({ type: 'FILE_COMPLETED', fileId, result: { ...fileResult, totalDuration: fileDuration } });
+    } else {
+      dispatch({ type: 'FILE_ERROR', fileId, error: 'No result received' });
+    }
+  }, []);
+
+  // Process SSE stream from /api/audit (real API call)
+  const processSSEStream = useCallback(async (
+    batchFile: BatchFile,
+    fileIndex: number,
+    fileStart: number,
+    signal: AbortSignal,
+  ): Promise<void> => {
+    const formData = new FormData();
+    formData.append('file', batchFile.file);
+    formData.append('auditDate', new Date().toISOString().split('T')[0]);
+    formData.append('fileIndex', String(fileIndex));
+
+    const response = await fetch('/api/audit', {
+      method: 'POST',
+      body: formData,
+      signal,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: 'Request failed' }));
+      dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: errData.error || `HTTP ${response.status}` });
+      return;
+    }
+    if (!response.body) {
+      dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No response stream' });
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = '';
+    let fileResult: AuditResult | null = null;
+    let hadError = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && currentEvent) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            switch (currentEvent) {
+              case 'step_start': {
+                const sid = Number(data.stepId);
+                if (sid >= 1 && sid <= TOTAL_STEPS) {
+                  dispatch({ type: 'STEP_ACTIVE', fileId: batchFile.id, stepId: sid, now: performance.now() });
+                }
+                break;
+              }
+              case 'step_done': {
+                const sid = Number(data.stepId);
+                if (sid >= 1 && sid <= TOTAL_STEPS) {
+                  dispatch({ type: 'STEP_COMPLETED', fileId: batchFile.id, stepId: sid, now: performance.now() });
+                }
+                break;
+              }
+              case 'result':
+                fileResult = data as AuditResult;
+                break;
+              case 'error':
+                hadError = true;
+                dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: data.message });
+                break;
+            }
+          } catch {
+            // Skip malformed SSE data
+          }
+          currentEvent = '';
+        }
+      }
+    }
+
+    const fileDuration = (performance.now() - fileStart) / 1000;
+    if (fileResult) {
+      dispatch({ type: 'FILE_COMPLETED', fileId: batchFile.id, result: { ...fileResult, totalDuration: fileDuration } });
+    } else if (!hadError) {
+      dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No result received' });
+    }
+  }, []);
+
+  // Batch audit runner — uses client mock in DEMO mode, API in real mode
   const handleStartAudit = useCallback(async (auditDate: string) => {
     if (runningRef.current) return;
     runningRef.current = true;
@@ -274,101 +449,12 @@ export default function Home() {
       abortRef.current = abortController;
 
       try {
-        const formData = new FormData();
-        formData.append('file', batchFile.file);
-        formData.append('auditDate', auditDate);
-        formData.append('fileIndex', String(fi));
-
-        const response = await fetch('/api/audit', {
-          method: 'POST',
-          body: formData,
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({ error: 'Request failed' }));
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: errData.error || `HTTP ${response.status}` });
-          continue;
-        }
-
-        if (!response.body) {
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No response stream' });
-          continue;
-        }
-
-        // Parse SSE stream from /api/audit
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let currentEvent = '';
-        let fileResult: AuditResult | null = null;
-        let hadError = false;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              currentEvent = line.slice(7).trim();
-            } else if (line.startsWith('data: ') && currentEvent) {
-              try {
-                const data = JSON.parse(line.slice(6));
-
-                switch (currentEvent) {
-                  case 'step_start': {
-                    const sid = Number(data.stepId);
-                    if (sid >= 1 && sid <= TOTAL_STEPS) {
-                      dispatch({
-                        type: 'STEP_ACTIVE',
-                        fileId: batchFile.id,
-                        stepId: sid,
-                        now: performance.now(),
-                      });
-                    }
-                    break;
-                  }
-                  case 'step_done': {
-                    const sid = Number(data.stepId);
-                    if (sid >= 1 && sid <= TOTAL_STEPS) {
-                      dispatch({
-                        type: 'STEP_COMPLETED',
-                        fileId: batchFile.id,
-                        stepId: sid,
-                        now: performance.now(),
-                      });
-                    }
-                    break;
-                  }
-                  case 'result':
-                    fileResult = data as AuditResult;
-                    break;
-                  case 'error':
-                    hadError = true;
-                    dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: data.message });
-                    break;
-                }
-              } catch {
-                // Skip malformed SSE data
-              }
-              currentEvent = '';
-            }
-          }
-        }
-
-        const fileDuration = (performance.now() - fileStart) / 1000;
-        if (fileResult) {
-          dispatch({
-            type: 'FILE_COMPLETED',
-            fileId: batchFile.id,
-            result: { ...fileResult, totalDuration: fileDuration },
-          });
-        } else if (!hadError) {
-          dispatch({ type: 'FILE_ERROR', fileId: batchFile.id, error: 'No result received' });
+        if (IS_DEMO) {
+          await processMockEvents(batchFile.id, fi, fileStart);
+        } else if (USE_DIRECT) {
+          await processDifyDirect(batchFile, fileStart);
+        } else {
+          await processSSEStream(batchFile, fi, fileStart, abortController.signal);
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') break;
@@ -387,7 +473,7 @@ export default function Home() {
     dispatch({ type: 'BATCH_DONE' });
     runningRef.current = false;
     abortRef.current = null;
-  }, [state.files, startTransition]);
+  }, [state.files, startTransition, processMockEvents, processDifyDirect, processSSEStream]);
 
   // Detail view — H1: wrapped in startTransition for non-blocking phase change
   const handleViewDetail = useCallback((fileId: string) => {
