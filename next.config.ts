@@ -1,13 +1,14 @@
 import type { NextConfig } from "next";
 
-const isStaticDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && process.env.STATIC_EXPORT === 'true';
+// Static export: demo mode OR direct Dify mode (no serverless needed)
+const useStaticExport = process.env.STATIC_EXPORT === 'true';
 
 const nextConfig: NextConfig = {
-  ...(isStaticDemo ? { output: 'export' } : {}),
+  ...(useStaticExport ? { output: 'export' } : {}),
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
-  ...(!isStaticDemo ? {
+  ...(!useStaticExport ? {
     async headers() {
       return [
         {
