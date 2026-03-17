@@ -233,12 +233,39 @@ function enrichResult(result: AuditResult): AuditResult {
   return result;
 }
 
+function findRawOutput(outputs: Record<string, unknown>): unknown {
+  // Try known keys first
+  for (const key of ['text', 'result', 'output', 'answer']) {
+    if (outputs[key] !== undefined && outputs[key] !== null && outputs[key] !== '') {
+      return outputs[key];
+    }
+  }
+  // Fallback: find the longest string value in all output keys
+  let best = '';
+  for (const [, val] of Object.entries(outputs)) {
+    if (typeof val === 'string' && val.length > best.length) {
+      best = val;
+    }
+    // Also check nested objects (some Dify workflows wrap output in an object)
+    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      return val;
+    }
+  }
+  return best || '';
+}
+
 function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
-  const raw = outputs.text ?? outputs.result ?? outputs.output ?? outputs.answer ?? '';
+  // Debug: log raw outputs for troubleshooting
+  console.log('[dify-direct] workflow outputs keys:', Object.keys(outputs));
+  console.log('[dify-direct] workflow outputs:', JSON.stringify(outputs).slice(0, 500));
+
+  const raw = findRawOutput(outputs);
 
   if (typeof raw === 'object' && raw !== null) {
     const obj = raw as Record<string, unknown>;
     if (obj.suggestion || obj.receptionType || obj.issues) {
+      const rawText = typeof obj.rawOutput === 'string' ? obj.rawOutput :
+                      typeof obj.text === 'string' ? obj.text : undefined;
       return enrichResult({
         receptionType: String(obj.receptionType || obj.reception_type || '公务接待'),
         suggestion: normalizeSuggestion(obj.suggestion),
@@ -249,6 +276,7 @@ function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
         aiSummary: typeof obj.aiSummary === 'string' ? obj.aiSummary :
                    typeof obj.summary === 'string' ? obj.summary :
                    typeof obj.ai_summary === 'string' ? obj.ai_summary : undefined,
+        rawOutput: rawText,
         totalDuration: 0,
       });
     }
@@ -268,17 +296,20 @@ function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
         aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary :
                    typeof parsed.summary === 'string' ? parsed.summary :
                    typeof parsed.ai_summary === 'string' ? parsed.ai_summary : undefined,
+        rawOutput: text,
         totalDuration: 0,
       });
     }
   } catch {
-    // Not JSON
+    // Not JSON — treat as plain text audit report
   }
 
+  // Plain text output from Dify (most common case for this workflow)
   return enrichResult({
-    receptionType: text.includes('商务接待') ? '商务接待' : '公务接待',
+    receptionType: extractReceptionType(text),
     suggestion: extractSuggestion(text),
     issues: extractIssuesFromText(text),
+    rawOutput: text.length > 10 ? text : undefined,
     totalDuration: 0,
   });
 }
@@ -321,7 +352,24 @@ function normalizeIssues(items: unknown): AuditIssue[] {
   });
 }
 
+function extractReceptionType(text: string): string {
+  if (text.includes('商务接待')) return '商务接待';
+  if (text.includes('公务接待')) return '公务接待';
+  // Try to extract from "招待类型：XXX" pattern
+  const match = text.match(/(?:招待|接待)类型[：:]\s*(.+?)(?:\n|$)/);
+  if (match) return match[1].trim();
+  return '公务接待';
+}
+
 function extractSuggestion(text: string): AuditSuggestion {
+  // Look for explicit verdict patterns
+  const verdictMatch = text.match(/(?:整体)?审核(?:结果|建议)[：:]\s*(.+?)(?:\n|$)/);
+  if (verdictMatch) {
+    const verdict = verdictMatch[1].trim();
+    if (verdict.includes('不通过') || verdict.includes('拒绝')) return '不通过';
+    if (verdict.includes('通过') && !verdict.includes('不') && !verdict.includes('复核')) return '通过';
+    if (verdict.includes('人工复核') || verdict.includes('复核')) return '人工复核';
+  }
   if (text.includes('不通过') || text.includes('拒绝')) return '不通过';
   if (text.includes('人工复核') || text.includes('复核')) return '人工复核';
   if (text.includes('通过')) return '通过';
@@ -330,14 +378,54 @@ function extractSuggestion(text: string): AuditSuggestion {
 
 function extractIssuesFromText(text: string): AuditIssue[] {
   const issues: AuditIssue[] = [];
-  const lines = text.split(/\n|。|；/).filter(l => l.trim().length > 5);
-  for (const line of lines.slice(0, 10)) {
-    const trimmed = line.replace(/^[-*•\d.]+\s*/, '').trim();
-    if (trimmed.length < 5 || trimmed.length > 300) continue;
-    const severity: AuditIssue['severity'] =
-      /缺失|不符|错误|超[期标]|违反/.test(trimmed) ? 'error' :
-      /注意|建议|偏[低高]|接近/.test(trimmed) ? 'warning' : 'info';
-    issues.push({ severity, message: trimmed });
+
+  // Strategy 1: Extract numbered items from "问题列表" / "问题详情" section
+  const problemSectionMatch = text.match(/(?:问题(?:列表|详情|汇总)|审核发现)[：:]*\n([\s\S]*?)(?:\n\n|$)/);
+  if (problemSectionMatch) {
+    const section = problemSectionMatch[1];
+    const numberedItems = section.match(/(?:^|\n)\s*\d+[.、．]\s*(.+)/g);
+    if (numberedItems) {
+      for (const item of numberedItems) {
+        const cleaned = item.replace(/^\s*\d+[.、．]\s*/, '').trim();
+        if (cleaned.length < 5 || cleaned.length > 500) continue;
+        const severity = classifyIssueSeverity(cleaned);
+        issues.push({ severity, message: cleaned });
+      }
+    }
   }
-  return issues.length > 0 ? issues : [{ severity: 'info', message: text.slice(0, 200) }];
+
+  // Strategy 2: Extract bullet items (• or - prefixed)
+  const bulletItems = text.match(/(?:^|\n)\s*[•\-*]\s+(.+)/g);
+  if (bulletItems) {
+    for (const item of bulletItems) {
+      const cleaned = item.replace(/^\s*[•\-*]\s+/, '').trim();
+      if (cleaned.length < 8 || cleaned.length > 500) continue;
+      // Skip if already captured
+      if (issues.some(i => i.message.includes(cleaned.slice(0, 20)))) continue;
+      // Only add items that look like issues (contain action words)
+      if (/未|缺|不[符规一]|超[期标]|矛盾|违反|错误|偏差|异常|不规范/.test(cleaned)) {
+        issues.push({ severity: classifyIssueSeverity(cleaned), message: cleaned });
+      }
+    }
+  }
+
+  // Strategy 3: Fallback — split on sentence boundaries, pick issue-like sentences
+  if (issues.length === 0) {
+    const lines = text.split(/\n/).filter(l => l.trim().length > 8);
+    for (const line of lines) {
+      const trimmed = line.replace(/^[-*•\d.、]+\s*/, '').trim();
+      if (trimmed.length < 8 || trimmed.length > 500) continue;
+      if (/未|缺|不[符规一]|超[期标]|矛盾|违反|错误|偏差|异常|不规范|不一致/.test(trimmed)) {
+        issues.push({ severity: classifyIssueSeverity(trimmed), message: trimmed });
+      }
+    }
+  }
+
+  return issues.length > 0 ? issues : [{ severity: 'info', message: text.slice(0, 300) }];
+}
+
+function classifyIssueSeverity(text: string): AuditIssue['severity'] {
+  if (/缺失|不符|错误|超[期标]|违反|矛盾|超过.*限|不一致/.test(text)) return 'error';
+  if (/注意|建议|偏[低高]|接近|不规范|未填写|未包含/.test(text)) return 'warning';
+  return 'info';
 }

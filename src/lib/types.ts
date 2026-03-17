@@ -55,6 +55,7 @@ export interface AuditResult {
   amount?: number;             // total reimbursement amount (元)
   pageCount?: number;          // total pages in the PDF
   aiSummary?: string;          // AI-generated per-file summary (from Dify or client-side)
+  rawOutput?: string;          // raw text output from Dify workflow (full audit report)
 }
 
 // -- v2.0 Batch types --

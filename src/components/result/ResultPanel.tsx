@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileCheck, Users, AlertTriangle, Copy, Download, RotateCcw, CheckCircle, XCircle, Check,
-  Scissors, ChevronDown, ChevronRight, FileX, Info,
+  Scissors, ChevronDown, ChevronRight, FileX, Info, FileText,
 } from 'lucide-react';
 import type { AuditResult, AuditIssue } from '@/lib/types';
 import { EASE_DEFAULT, DURATION } from '@/lib/animations';
@@ -158,6 +158,12 @@ function formatResultText(result: AuditResult): string {
     `\u5BA1\u6838\u8017\u65F6: ${result.totalDuration.toFixed(1)}\u79D2`,
   ];
   if (result.amount) lines.push(`\u62A5\u9500\u91D1\u989D: ${result.amount}\u5143`);
+  if (result.rawOutput) {
+    lines.push('');
+    lines.push('--- \u5B8C\u6574\u5BA1\u6838\u62A5\u544A ---');
+    lines.push(result.rawOutput);
+    lines.push('');
+  }
   if (result.subDocuments) {
     lines.push('');
     lines.push('--- \u5355\u636E\u8BC6\u522B ---');
@@ -181,6 +187,144 @@ const SUGGESTION_CONFIG = {
   '\u4EBA\u5DE5\u590D\u6838': { badgeClass: 'badge-amber', Icon: AlertTriangle },
   '\u4E0D\u901A\u8FC7': { badgeClass: 'badge-red', Icon: XCircle },
 } as const;
+
+// ── RawOutputSection ──
+
+function RawOutputSection({ rawOutput }: { rawOutput: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Parse raw text into styled segments
+  const segments = useMemo(() => {
+    return rawOutput.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      // Section headers: Chinese numbered sections (一、二、etc.) or bold markers
+      if (/^[一二三四五六七八九十]+[、.]/.test(trimmed) || /^\*\*.*\*\*$/.test(trimmed)) {
+        return { type: 'heading' as const, text: trimmed.replace(/\*\*/g, ''), key: i };
+      }
+      // Sub-section headers: "N. [Title]" pattern
+      if (/^\d+\.\s*[\[【]/.test(trimmed)) {
+        return { type: 'subheading' as const, text: trimmed, key: i };
+      }
+      // Numbered issues (in problem list)
+      if (/^\d+[.、]\s+/.test(trimmed)) {
+        const isError = /缺失|不符|超[期标]|矛盾|违反|不一致/.test(trimmed);
+        const isWarning = /未填写|不规范|未包含|建议/.test(trimmed);
+        return {
+          type: 'issue' as const,
+          text: trimmed,
+          severity: isError ? 'error' : isWarning ? 'warning' : 'info',
+          key: i,
+        };
+      }
+      // Bullet points
+      if (/^[•\-*]\s+/.test(trimmed)) {
+        const isError = /缺失|不符|超[期标]|矛盾|违反|不一致|超过.*限/.test(trimmed);
+        const isWarning = /未填写|不规范|未包含|建议/.test(trimmed);
+        return {
+          type: 'bullet' as const,
+          text: trimmed.replace(/^[•\-*]\s+/, ''),
+          severity: isError ? 'error' : isWarning ? 'warning' : 'info',
+          key: i,
+        };
+      }
+      // Empty line
+      if (!trimmed) return { type: 'blank' as const, text: '', key: i };
+      // Regular text
+      return { type: 'text' as const, text: trimmed, key: i };
+    });
+  }, [rawOutput]);
+
+  return (
+    <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(13,148,136,0.1)' }}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 w-full"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <FileText size={14} color="#0D9488" strokeWidth={2} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
+          {'\u5B8C\u6574\u5BA1\u6838\u62A5\u544A'}
+        </p>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          {expanded ? '\u6536\u8D77' : '\u5C55\u5F00\u67E5\u770B'}
+        </span>
+        {expanded
+          ? <ChevronDown size={14} color="var(--text-muted)" strokeWidth={2} />
+          : <ChevronRight size={14} color="var(--text-muted)" strokeWidth={2} />
+        }
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div
+              style={{
+                marginTop: 16, padding: '20px 24px', borderRadius: 12,
+                background: 'var(--glass-bg, rgba(248,250,252,0.8))',
+                border: '1px solid var(--glass-border, rgba(13,148,136,0.1))',
+                fontSize: 13, lineHeight: 1.8,
+                color: 'var(--text-primary)',
+                maxHeight: 600, overflowY: 'auto',
+              }}
+            >
+              {segments.map(seg => {
+                if (seg.type === 'blank') {
+                  return <div key={seg.key} style={{ height: 8 }} />;
+                }
+                if (seg.type === 'heading') {
+                  return (
+                    <p key={seg.key} style={{
+                      fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
+                      marginTop: 16, marginBottom: 8,
+                      paddingBottom: 4, borderBottom: '1px solid rgba(13,148,136,0.1)',
+                    }}>
+                      {seg.text}
+                    </p>
+                  );
+                }
+                if (seg.type === 'subheading') {
+                  return (
+                    <p key={seg.key} style={{
+                      fontSize: 14, fontWeight: 600, color: '#0D9488',
+                      marginTop: 12, marginBottom: 4,
+                    }}>
+                      {seg.text}
+                    </p>
+                  );
+                }
+                if (seg.type === 'issue' || seg.type === 'bullet') {
+                  const sevColor = seg.severity === 'error' ? '#DC2626'
+                    : seg.severity === 'warning' ? '#D97706' : 'var(--text-secondary)';
+                  return (
+                    <p key={seg.key} style={{
+                      paddingLeft: 16, marginTop: 4,
+                      color: sevColor,
+                      fontWeight: seg.severity === 'error' ? 600 : 400,
+                    }}>
+                      {seg.type === 'bullet' ? '\u2022 ' : ''}{seg.text}
+                    </p>
+                  );
+                }
+                return (
+                  <p key={seg.key} style={{ marginTop: 2, color: 'var(--text-secondary)' }}>
+                    {seg.text}
+                  </p>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // ── Main component ──
 
@@ -398,6 +542,11 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
               ))}
             </div>
           </div>
+        )}
+
+        {/* ── Full Dify audit report (raw output) ── */}
+        {result.rawOutput && (
+          <RawOutputSection rawOutput={result.rawOutput} />
         )}
 
         {/* Action bar */}
