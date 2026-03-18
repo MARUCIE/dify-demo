@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileCheck, Users, AlertTriangle, Copy, Download, RotateCcw, CheckCircle, XCircle, Check,
-  Scissors, ChevronDown, ChevronRight, FileX, Info, FileText,
+  Scissors, ChevronDown, ChevronRight, FileX, Info,
 } from 'lucide-react';
 import type { AuditResult, AuditIssue } from '@/lib/types';
 import { EASE_DEFAULT, DURATION } from '@/lib/animations';
@@ -160,7 +160,7 @@ function formatResultText(result: AuditResult): string {
   if (result.amount) lines.push(`\u62A5\u9500\u91D1\u989D: ${result.amount}\u5143`);
   if (result.rawOutput) {
     lines.push('');
-    lines.push('--- \u5B8C\u6574\u5BA1\u6838\u62A5\u544A ---');
+    lines.push('--- \u601D\u8003\u8FC7\u7A0B ---');
     lines.push(result.rawOutput);
     lines.push('');
   }
@@ -188,15 +188,21 @@ const SUGGESTION_CONFIG = {
   '\u4E0D\u901A\u8FC7': { badgeClass: 'badge-red', Icon: XCircle },
 } as const;
 
-// ── RawOutputSection ──
+// ── ThinkingProcessSection ──
+// Mirrors Dify's "已深度思考" collapsible panel.
+// Displays the full audit breakdown (rawOutput) with semantic highlighting.
 
-function RawOutputSection({ rawOutput }: { rawOutput: string }) {
+function ThinkingProcessSection({ rawOutput, duration }: { rawOutput: string; duration: number }) {
   const [expanded, setExpanded] = useState(false);
 
   // Parse raw text into styled segments
   const segments = useMemo(() => {
     return rawOutput.split('\n').map((line, i) => {
       const trimmed = line.trim();
+      // Main title (### heading)
+      if (/^#{1,3}\s+/.test(trimmed)) {
+        return { type: 'title' as const, text: trimmed.replace(/^#{1,3}\s+/, ''), key: i };
+      }
       // Section headers: Chinese numbered sections (一、二、etc.) or bold markers
       if (/^[一二三四五六七八九十]+[、.]/.test(trimmed) || /^\*\*.*\*\*$/.test(trimmed)) {
         return { type: 'heading' as const, text: trimmed.replace(/\*\*/g, ''), key: i };
@@ -205,25 +211,15 @@ function RawOutputSection({ rawOutput }: { rawOutput: string }) {
       if (/^\d+\.\s*[\[【]/.test(trimmed)) {
         return { type: 'subheading' as const, text: trimmed, key: i };
       }
-      // Numbered issues (in problem list)
-      if (/^\d+[.、]\s+/.test(trimmed)) {
-        const isError = /缺失|不符|超[期标]|矛盾|违反|不一致/.test(trimmed);
-        const isWarning = /未填写|不规范|未包含|建议/.test(trimmed);
-        return {
-          type: 'issue' as const,
-          text: trimmed,
-          severity: isError ? 'error' : isWarning ? 'warning' : 'info',
-          key: i,
-        };
-      }
-      // Bullet points
+      // Bullet points with compliance status
       if (/^[•\-*]\s+/.test(trimmed)) {
-        const isError = /缺失|不符|超[期标]|矛盾|违反|不一致|超过.*限/.test(trimmed);
-        const isWarning = /未填写|不规范|未包含|建议/.test(trimmed);
+        const text = trimmed.replace(/^[•\-*]\s+/, '');
+        const isViolation = /违规|违反|需复核|需关注/.test(text);
+        const isCompliant = /合规/.test(text) && !isViolation;
         return {
           type: 'bullet' as const,
-          text: trimmed.replace(/^[•\-*]\s+/, ''),
-          severity: isError ? 'error' : isWarning ? 'warning' : 'info',
+          text,
+          status: isViolation ? 'violation' : isCompliant ? 'compliant' : 'neutral',
           key: i,
         };
       }
@@ -235,24 +231,64 @@ function RawOutputSection({ rawOutput }: { rawOutput: string }) {
   }, [rawOutput]);
 
   return (
-    <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(13,148,136,0.1)' }}>
+    <div style={{ padding: '20px 32px', borderBottom: '1px solid rgba(13,148,136,0.08)' }}>
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        style={{
+          width: '100%',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', borderRadius: 10,
+          background: expanded
+            ? 'rgba(13,148,136,0.06)'
+            : 'rgba(248,250,252,0.8)',
+          border: expanded
+            ? '1px solid rgba(13,148,136,0.18)'
+            : '1px solid rgba(226,232,240,0.6)',
+          cursor: 'pointer', textAlign: 'left',
+          transition: 'all 0.25s ease',
+        }}
       >
-        <FileText size={14} color="#0D9488" strokeWidth={2} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
-          {'\u5B8C\u6574\u5BA1\u6838\u62A5\u544A'}
+        {/* Thinking icon */}
+        <div style={{
+          width: 28, height: 28, borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: expanded
+            ? 'rgba(13,148,136,0.12)'
+            : 'rgba(100,116,139,0.08)',
+          transition: 'background 0.2s',
+          flexShrink: 0,
+        }}>
+          <Info size={14} color={expanded ? '#0D9488' : '#94A3B8'} strokeWidth={2} />
+        </div>
+
+        <p style={{
+          fontSize: 13, fontWeight: 600,
+          color: expanded ? '#0D9488' : 'var(--text-secondary)',
+          flex: 1, transition: 'color 0.2s',
+        }}>
+          {'\u601D\u8003\u8FC7\u7A0B'}
+          <span style={{
+            color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6, fontSize: 12,
+          }}>
+            {'\u5DF2\u6DF1\u5EA6\u601D\u8003'} {duration.toFixed(1)}s
+          </span>
         </p>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          {expanded ? '\u6536\u8D77' : '\u5C55\u5F00\u67E5\u770B'}
+
+        <span style={{
+          fontSize: 11, fontWeight: 500, color: expanded ? '#0D9488' : '#94A3B8',
+          transition: 'color 0.2s',
+        }}>
+          {expanded ? '\u6536\u8D77' : '\u5C55\u5F00'}
         </span>
-        {expanded
-          ? <ChevronDown size={14} color="var(--text-muted)" strokeWidth={2} />
-          : <ChevronRight size={14} color="var(--text-muted)" strokeWidth={2} />
-        }
+
+        <motion.div
+          animate={{ rotate: expanded ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ flexShrink: 0, color: expanded ? '#0D9488' : 'var(--text-muted)' }}
+        >
+          <ChevronRight size={14} strokeWidth={2} />
+        </motion.div>
       </button>
 
       <AnimatePresence>
@@ -261,29 +297,39 @@ function RawOutputSection({ rawOutput }: { rawOutput: string }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
             style={{ overflow: 'hidden' }}
           >
             <div
               style={{
-                marginTop: 16, padding: '20px 24px', borderRadius: 12,
-                background: 'var(--glass-bg, rgba(248,250,252,0.8))',
-                border: '1px solid var(--glass-border, rgba(13,148,136,0.1))',
-                fontSize: 13, lineHeight: 1.8,
+                marginTop: 12, padding: '20px 24px', borderRadius: 12,
+                background: 'rgba(248,250,252,0.6)',
+                border: '1px solid rgba(226,232,240,0.6)',
+                fontSize: 13, lineHeight: 1.9,
                 color: 'var(--text-primary)',
-                maxHeight: 600, overflowY: 'auto',
+                maxHeight: 520, overflowY: 'auto',
               }}
             >
               {segments.map(seg => {
                 if (seg.type === 'blank') {
-                  return <div key={seg.key} style={{ height: 8 }} />;
+                  return <div key={seg.key} style={{ height: 6 }} />;
+                }
+                if (seg.type === 'title') {
+                  return (
+                    <p key={seg.key} style={{
+                      fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
+                      marginBottom: 12,
+                    }}>
+                      {seg.text}
+                    </p>
+                  );
                 }
                 if (seg.type === 'heading') {
                   return (
                     <p key={seg.key} style={{
-                      fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
-                      marginTop: 16, marginBottom: 8,
-                      paddingBottom: 4, borderBottom: '1px solid rgba(13,148,136,0.1)',
+                      fontSize: 14, fontWeight: 700, color: '#1E293B',
+                      marginTop: 16, marginBottom: 6,
+                      paddingBottom: 4, borderBottom: '1px solid rgba(226,232,240,0.5)',
                     }}>
                       {seg.text}
                     </p>
@@ -292,23 +338,33 @@ function RawOutputSection({ rawOutput }: { rawOutput: string }) {
                 if (seg.type === 'subheading') {
                   return (
                     <p key={seg.key} style={{
-                      fontSize: 14, fontWeight: 600, color: '#0D9488',
-                      marginTop: 12, marginBottom: 4,
+                      fontSize: 13, fontWeight: 600, color: '#0D9488',
+                      marginTop: 10, marginBottom: 3,
                     }}>
                       {seg.text}
                     </p>
                   );
                 }
-                if (seg.type === 'issue' || seg.type === 'bullet') {
-                  const sevColor = seg.severity === 'error' ? '#DC2626'
-                    : seg.severity === 'warning' ? '#D97706' : 'var(--text-secondary)';
+                if (seg.type === 'bullet') {
+                  const color = seg.status === 'violation' ? '#DC2626'
+                    : seg.status === 'compliant' ? '#64748B' : 'var(--text-secondary)';
+                  const weight = seg.status === 'violation' ? 600 : 400;
+                  // Highlight the (违规)/(合规) suffix
+                  const parts = seg.text.match(/^(.+?)(（[^）]+）)([。.]*$)/);
+                  if (parts) {
+                    const suffixColor = seg.status === 'violation' ? '#DC2626'
+                      : seg.status === 'compliant' ? '#059669' : color;
+                    return (
+                      <p key={seg.key} style={{ paddingLeft: 16, marginTop: 3, color, fontWeight: weight }}>
+                        {'• '}{parts[1]}
+                        <span style={{ color: suffixColor, fontWeight: 500 }}>{parts[2]}</span>
+                        {parts[3]}
+                      </p>
+                    );
+                  }
                   return (
-                    <p key={seg.key} style={{
-                      paddingLeft: 16, marginTop: 4,
-                      color: sevColor,
-                      fontWeight: seg.severity === 'error' ? 600 : 400,
-                    }}>
-                      {seg.type === 'bullet' ? '\u2022 ' : ''}{seg.text}
+                    <p key={seg.key} style={{ paddingLeft: 16, marginTop: 3, color, fontWeight: weight }}>
+                      {'• '}{seg.text}
                     </p>
                   );
                 }
@@ -330,8 +386,13 @@ function RawOutputSection({ rawOutput }: { rawOutput: string }) {
 
 export default function ResultPanel({ result, onReset }: ResultPanelProps) {
   const suggestionConfig = SUGGESTION_CONFIG[result.suggestion];
-  const errorCount = result.issues.filter(i => i.severity === 'error').length;
-  const warningCount = result.issues.filter(i => i.severity === 'warning').length;
+  // Filter out info-level "合规" items — only show actual violations in 问题列表
+  const displayIssues = useMemo(() =>
+    result.issues.filter(i => i.severity !== 'info'),
+    [result.issues],
+  );
+  const errorCount = displayIssues.filter(i => i.severity === 'error').length;
+  const warningCount = displayIssues.filter(i => i.severity === 'warning').length;
   const [copied, setCopied] = useState(false);
 
   // Memoize sub-document analysis — only recompute when result identity changes
@@ -515,13 +576,14 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
         )}
 
         {/* ── Flat issues list (when no sub-documents) ── */}
-        {!subDocData && (
+        {!subDocData && displayIssues.length > 0 && (
           <div style={{ padding: '24px 32px' }}>
             <div className="flex items-center justify-between mb-5">
               <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                {'\u53D1\u73B0'}{' '}
-                <span style={{ color: '#DC2626' }}>{result.issues.length}</span>{' '}
-                {'\u4E2A\u95EE\u9898'}
+                {'\u95EE\u9898\u5217\u8868'}{' '}
+                <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
+                  ({displayIssues.length})
+                </span>
               </p>
               <div className="flex gap-2">
                 {errorCount > 0 && (
@@ -537,16 +599,32 @@ export default function ResultPanel({ result, onReset }: ResultPanelProps) {
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              {result.issues.map((issue, i) => (
+              {displayIssues.map((issue, i) => (
                 <IssueCard key={i} issue={issue} index={i} />
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Full Dify audit report (raw output) ── */}
+        {/* No issues — clean pass indicator */}
+        {!subDocData && displayIssues.length === 0 && (
+          <div style={{ padding: '24px 32px', textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 10,
+              background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.15)',
+            }}>
+              <CheckCircle size={16} color="#059669" strokeWidth={2} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#059669' }}>
+                {'\u672A\u53D1\u73B0\u5408\u89C4\u95EE\u9898'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Thinking Process (思考过程) — collapsible detailed audit ── */}
         {result.rawOutput && (
-          <RawOutputSection rawOutput={result.rawOutput} />
+          <ThinkingProcessSection rawOutput={result.rawOutput} duration={result.totalDuration} />
         )}
 
         {/* Action bar */}

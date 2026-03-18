@@ -125,19 +125,19 @@ export function deriveSubDocumentsFromIssues(issues: AuditIssue[]): SubDocument[
 export function generatePerFileSummary(result: AuditResult): string {
   const errors = result.issues.filter(i => i.severity === 'error');
   const warnings = result.issues.filter(i => i.severity === 'warning');
-  const infos = result.issues.filter(i => i.severity === 'info');
+  // Only count actual violations (error + warning), not info/passing items
+  const violationCount = errors.length + warnings.length;
 
-  if (result.issues.length === 0) {
+  if (violationCount === 0) {
     return `该报销包审核通过，未发现合规问题。接待类型: ${result.receptionType}。`;
   }
 
   const parts: string[] = [];
 
-  // Severity overview
+  // Severity overview (only violations)
   const counts: string[] = [];
   if (errors.length > 0) counts.push(`${errors.length}个严重问题`);
   if (warnings.length > 0) counts.push(`${warnings.length}个警告`);
-  if (infos.length > 0) counts.push(`${infos.length}个提示`);
   parts.push(`该报销包存在${counts.join('、')}。`);
 
   // Most critical issue highlight

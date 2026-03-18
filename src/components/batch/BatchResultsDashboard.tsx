@@ -775,6 +775,13 @@ function ExpandedPanel({ file, onViewDetail }: ExpandedPanelProps) {
   const result = file.result!;
   const subDocuments = result.subDocuments ?? [];
   const hasSubDocData = subDocuments.length > 0;
+  const [thinkingExpanded, setThinkingExpanded] = useState(false);
+
+  // Filter out info-level "合规" items — only show actual violations
+  const displayIssues = useMemo(() =>
+    result.issues.filter(i => i.severity !== 'info'),
+    [result.issues],
+  );
 
   // Analyze sub-documents for detailed display
   const subDocAnalysis = useMemo(() => {
@@ -788,15 +795,14 @@ function ExpandedPanel({ file, onViewDetail }: ExpandedPanelProps) {
     // Fall back to generating from structured data
     const errors = result.issues.filter(i => i.severity === 'error');
     const warnings = result.issues.filter(i => i.severity === 'warning');
-    const infos = result.issues.filter(i => i.severity === 'info');
-    if (result.issues.length === 0) {
+    const violationCount = errors.length + warnings.length;
+    if (violationCount === 0) {
       return `该报销包审核通过，未发现合规问题。接待类型: ${result.receptionType}。`;
     }
     const parts: string[] = [];
     const counts: string[] = [];
     if (errors.length > 0) counts.push(`${errors.length}个严重问题`);
     if (warnings.length > 0) counts.push(`${warnings.length}个警告`);
-    if (infos.length > 0) counts.push(`${infos.length}个提示`);
     parts.push(`该报销包存在${counts.join('、')}。`);
     if (errors.length > 0) {
       parts.push(`最关键的问题: ${errors[0].message}。`);
@@ -879,8 +885,8 @@ function ExpandedPanel({ file, onViewDetail }: ExpandedPanelProps) {
         </div>
       )}
 
-      {/* Issue list */}
-      {result.issues.length > 0 && (
+      {/* Issue list (violations only) */}
+      {displayIssues.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <p style={{
             fontSize: 12,
@@ -888,10 +894,10 @@ function ExpandedPanel({ file, onViewDetail }: ExpandedPanelProps) {
             color: 'var(--text-secondary)',
             marginBottom: 10,
           }}>
-            问题列表 ({result.issues.length})
+            问题列表 ({displayIssues.length})
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {result.issues.map((issue, idx) => (
+            {displayIssues.map((issue, idx) => (
               <InlineIssue key={idx} issue={issue} />
             ))}
           </div>
@@ -923,6 +929,117 @@ function ExpandedPanel({ file, onViewDetail }: ExpandedPanelProps) {
               {aiSummary}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Thinking Process (思考过程) — collapsible */}
+      {result.rawOutput && (
+        <div style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setThinkingExpanded(!thinkingExpanded);
+            }}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 14px', borderRadius: 8,
+              background: thinkingExpanded
+                ? 'rgba(13,148,136,0.06)'
+                : 'rgba(248,250,252,0.8)',
+              border: thinkingExpanded
+                ? '1px solid rgba(13,148,136,0.18)'
+                : '1px solid rgba(226,232,240,0.6)',
+              cursor: 'pointer', textAlign: 'left',
+              transition: 'all 0.25s ease',
+            }}
+          >
+            <div style={{
+              width: 24, height: 24, borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: thinkingExpanded
+                ? 'rgba(13,148,136,0.12)'
+                : 'rgba(100,116,139,0.08)',
+              flexShrink: 0,
+            }}>
+              <Info size={12} color={thinkingExpanded ? '#0D9488' : '#94A3B8'} strokeWidth={2} />
+            </div>
+            <span style={{
+              fontSize: 12, fontWeight: 600, flex: 1,
+              color: thinkingExpanded ? '#0D9488' : 'var(--text-secondary)',
+            }}>
+              思考过程
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6, fontSize: 11 }}>
+                已深度思考 {result.totalDuration.toFixed(1)}s
+              </span>
+            </span>
+            <span style={{
+              fontSize: 11, fontWeight: 500,
+              color: thinkingExpanded ? '#0D9488' : '#94A3B8',
+            }}>
+              {thinkingExpanded ? '收起' : '展开'}
+            </span>
+            <motion.div
+              animate={{ rotate: thinkingExpanded ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ flexShrink: 0, color: thinkingExpanded ? '#0D9488' : 'var(--text-muted)' }}
+            >
+              <ChevronRight size={12} strokeWidth={2} />
+            </motion.div>
+          </button>
+
+          <AnimatePresence>
+            {thinkingExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div
+                  style={{
+                    marginTop: 8, padding: '16px 20px', borderRadius: 8,
+                    background: 'rgba(248,250,252,0.6)',
+                    border: '1px solid rgba(226,232,240,0.6)',
+                    fontSize: 12, lineHeight: 1.8,
+                    color: 'var(--text-primary)',
+                    maxHeight: 400, overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {result.rawOutput.split('\n').map((line, i) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return <div key={i} style={{ height: 4 }} />;
+                    if (/^#{1,3}\s+/.test(trimmed)) {
+                      return <p key={i} style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{trimmed.replace(/^#{1,3}\s+/, '')}</p>;
+                    }
+                    if (/^[一二三四五六七八九十]+[、.]/.test(trimmed)) {
+                      return <p key={i} style={{ fontSize: 13, fontWeight: 700, marginTop: 12, marginBottom: 4, paddingBottom: 3, borderBottom: '1px solid rgba(226,232,240,0.5)' }}>{trimmed}</p>;
+                    }
+                    if (/^\d+\.\s*[\[【]/.test(trimmed)) {
+                      return <p key={i} style={{ fontSize: 12, fontWeight: 600, color: '#0D9488', marginTop: 8, marginBottom: 2 }}>{trimmed}</p>;
+                    }
+                    if (/^[•\-*]\s+/.test(trimmed)) {
+                      const text = trimmed.replace(/^[•\-*]\s+/, '');
+                      const isViolation = /违规|违反|需复核|需关注/.test(text);
+                      const color = isViolation ? '#DC2626' : '#64748B';
+                      const weight = isViolation ? 600 : 400;
+                      // Highlight (违规)/(合规) suffix
+                      const parts = text.match(/^(.+?)(（[^）]+）)([。.]*$)/);
+                      if (parts) {
+                        const suffixColor = isViolation ? '#DC2626' : '#059669';
+                        return <p key={i} style={{ paddingLeft: 12, marginTop: 2, color, fontWeight: weight }}>• {parts[1]}<span style={{ color: suffixColor, fontWeight: 500 }}>{parts[2]}</span>{parts[3]}</p>;
+                      }
+                      return <p key={i} style={{ paddingLeft: 12, marginTop: 2, color, fontWeight: weight }}>• {text}</p>;
+                    }
+                    return <p key={i} style={{ marginTop: 1, color: 'var(--text-secondary)' }}>{trimmed}</p>;
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
