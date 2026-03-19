@@ -233,8 +233,75 @@ function enrichResult(result: AuditResult): AuditResult {
   return result;
 }
 
+// Strip HTML tags (e.g. <font color="red">...</font>) to plain text
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '').trim();
+}
+
+// Parse the "res" string format from Guo's Dify workflow:
+//   <think>...thinking process...</think>
+//   招待类型：公务接待
+//   审核建议：人工复核
+//   问题列表：
+//   <font color="red">1. issue text</font>
+//   <font color="red">2. issue text</font>
+interface ParsedResString {
+  thinkingProcess: string;    // content inside <think> tags
+  receptionType: string;
+  suggestion: AuditSuggestion;
+  issues: AuditIssue[];
+  bodyText: string;           // text outside <think>, for rawOutput display
+}
+
+function parseResString(res: string): ParsedResString | null {
+  // Must contain <think> or 问题列表 to be recognized as Guo's format
+  if (!res.includes('<think>') && !res.includes('问题列表')) return null;
+
+  // Extract <think> content
+  let thinkingProcess = '';
+  let bodyText = res;
+  const thinkMatch = res.match(/<think>([\s\S]*?)<\/think>/);
+  if (thinkMatch) {
+    thinkingProcess = thinkMatch[1].trim();
+    bodyText = res.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+  }
+
+  // Extract reception type from body
+  const typeMatch = bodyText.match(/(?:招待|接待)类型[：:]\s*(.+?)(?:\n|$)/);
+  const receptionType = typeMatch ? typeMatch[1].trim() : '公务接待';
+
+  // Extract suggestion from body
+  const suggestionMatch = bodyText.match(/审核建议[：:]\s*(.+?)(?:\n|$)/);
+  const suggestion = suggestionMatch
+    ? normalizeSuggestion(suggestionMatch[1].trim())
+    : extractSuggestion(bodyText);
+
+  // Extract issues after "问题列表：" — each line may have <font> tags
+  const issues: AuditIssue[] = [];
+  const issuesSectionMatch = bodyText.match(/问题列表[：:]\s*\n?([\s\S]*?)$/);
+  if (issuesSectionMatch) {
+    const section = issuesSectionMatch[1];
+    // Match numbered items: "1. ..." or "<font ...>1. ...</font>"
+    const lines = section.split('\n').filter(l => l.trim().length > 0);
+    for (const line of lines) {
+      const cleaned = stripHtmlTags(line).replace(/^\s*\d+[.、．]\s*/, '').trim();
+      if (cleaned.length < 5) continue;
+      issues.push({
+        severity: classifyIssueSeverity(cleaned),
+        message: cleaned,
+      });
+    }
+  }
+
+  return { thinkingProcess, receptionType, suggestion, issues, bodyText };
+}
+
 function findRawOutput(outputs: Record<string, unknown>): unknown {
-  // Try known keys first
+  // Try 'res' key first (Guo's Dify workflow format)
+  if (typeof outputs.res === 'string' && outputs.res.length > 0) {
+    return outputs.res;
+  }
+  // Try known keys
   for (const key of ['text', 'result', 'output', 'answer']) {
     if (outputs[key] !== undefined && outputs[key] !== null && outputs[key] !== '') {
       return outputs[key];
@@ -261,6 +328,22 @@ function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
 
   const raw = findRawOutput(outputs);
 
+  // Try Guo's <think>+问题列表 format first (highest priority)
+  if (typeof raw === 'string') {
+    const parsed = parseResString(raw);
+    if (parsed) {
+      console.log('[dify-direct] parsed res string format: %d issues, thinking=%d chars',
+        parsed.issues.length, parsed.thinkingProcess.length);
+      return enrichResult({
+        receptionType: parsed.receptionType,
+        suggestion: parsed.suggestion,
+        issues: parsed.issues,
+        rawOutput: parsed.thinkingProcess || undefined,
+        totalDuration: 0,
+      });
+    }
+  }
+
   if (typeof raw === 'object' && raw !== null) {
     const obj = raw as Record<string, unknown>;
     if (obj.suggestion || obj.receptionType || obj.issues) {
@@ -284,18 +367,31 @@ function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
 
   const text = String(raw);
   try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === 'object') {
+    const jsonParsed = JSON.parse(text);
+    if (jsonParsed && typeof jsonParsed === 'object') {
+      // Check if the JSON object itself contains a 'res' string (e.g. {"res": "<think>..."})
+      if (typeof jsonParsed.res === 'string') {
+        const resParsed = parseResString(jsonParsed.res);
+        if (resParsed) {
+          return enrichResult({
+            receptionType: resParsed.receptionType,
+            suggestion: resParsed.suggestion,
+            issues: resParsed.issues,
+            rawOutput: resParsed.thinkingProcess || undefined,
+            totalDuration: 0,
+          });
+        }
+      }
       return enrichResult({
-        receptionType: String(parsed.receptionType || parsed.reception_type || '公务接待'),
-        suggestion: normalizeSuggestion(parsed.suggestion || parsed.result),
-        issues: normalizeIssues(parsed.issues || parsed.problems || []),
-        subDocuments: normalizeSubDocuments(parsed.subDocuments || parsed.sub_documents || parsed.documents),
-        amount: typeof parsed.amount === 'number' ? parsed.amount : undefined,
-        pageCount: typeof parsed.pageCount === 'number' ? parsed.pageCount : undefined,
-        aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary :
-                   typeof parsed.summary === 'string' ? parsed.summary :
-                   typeof parsed.ai_summary === 'string' ? parsed.ai_summary : undefined,
+        receptionType: String(jsonParsed.receptionType || jsonParsed.reception_type || '公务接待'),
+        suggestion: normalizeSuggestion(jsonParsed.suggestion || jsonParsed.result),
+        issues: normalizeIssues(jsonParsed.issues || jsonParsed.problems || []),
+        subDocuments: normalizeSubDocuments(jsonParsed.subDocuments || jsonParsed.sub_documents || jsonParsed.documents),
+        amount: typeof jsonParsed.amount === 'number' ? jsonParsed.amount : undefined,
+        pageCount: typeof jsonParsed.pageCount === 'number' ? jsonParsed.pageCount : undefined,
+        aiSummary: typeof jsonParsed.aiSummary === 'string' ? jsonParsed.aiSummary :
+                   typeof jsonParsed.summary === 'string' ? jsonParsed.summary :
+                   typeof jsonParsed.ai_summary === 'string' ? jsonParsed.ai_summary : undefined,
         rawOutput: text,
         totalDuration: 0,
       });

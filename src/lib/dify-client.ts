@@ -170,9 +170,80 @@ export function enrichResult(result: AuditResult): AuditResult {
   return result;
 }
 
+// Strip HTML tags (e.g. <font color="red">...</font>) to plain text
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '').trim();
+}
+
+// Parse the "res" string format from Guo's Dify workflow:
+//   <think>...thinking process...</think>
+//   招待类型：公务接待
+//   审核建议：人工复核
+//   问题列表：
+//   <font color="red">1. issue text</font>
+function parseResString(res: string): {
+  thinkingProcess: string;
+  receptionType: string;
+  suggestion: AuditSuggestion;
+  issues: AuditIssue[];
+} | null {
+  if (!res.includes('<think>') && !res.includes('问题列表')) return null;
+
+  let thinkingProcess = '';
+  let bodyText = res;
+  const thinkMatch = res.match(/<think>([\s\S]*?)<\/think>/);
+  if (thinkMatch) {
+    thinkingProcess = thinkMatch[1].trim();
+    bodyText = res.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+  }
+
+  const typeMatch = bodyText.match(/(?:招待|接待)类型[：:]\s*(.+?)(?:\n|$)/);
+  const receptionType = typeMatch ? typeMatch[1].trim() : '公务接待';
+
+  const suggestionMatch = bodyText.match(/审核建议[：:]\s*(.+?)(?:\n|$)/);
+  const suggestion = suggestionMatch
+    ? normalizeSuggestion(suggestionMatch[1].trim())
+    : extractSuggestion(bodyText);
+
+  const issues: AuditIssue[] = [];
+  const issuesSectionMatch = bodyText.match(/问题列表[：:]\s*\n?([\s\S]*?)$/);
+  if (issuesSectionMatch) {
+    const lines = issuesSectionMatch[1].split('\n').filter(l => l.trim().length > 0);
+    for (const line of lines) {
+      const cleaned = stripHtmlTags(line).replace(/^\s*\d+[.、．]\s*/, '').trim();
+      if (cleaned.length < 5) continue;
+      const severity = classifyIssueSeverity(cleaned);
+      issues.push({ severity, message: cleaned });
+    }
+  }
+
+  return { thinkingProcess, receptionType, suggestion, issues };
+}
+
+function classifyIssueSeverity(text: string): AuditIssue['severity'] {
+  if (/缺失|不符|错误|超[期标]|违反|矛盾|超过.*限|不一致/.test(text)) return 'error';
+  if (/注意|建议|偏[低高]|接近|不规范|未填写|未包含/.test(text)) return 'warning';
+  return 'info';
+}
+
 // Parse Dify workflow outputs into AuditResult
 export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
-  const raw = outputs.text ?? outputs.result ?? outputs.output ?? outputs.answer ?? '';
+  // Try 'res' key first (Guo's Dify workflow format)
+  const raw = outputs.res ?? outputs.text ?? outputs.result ?? outputs.output ?? outputs.answer ?? '';
+
+  // Try Guo's <think>+问题列表 format first
+  if (typeof raw === 'string') {
+    const parsed = parseResString(raw);
+    if (parsed) {
+      return enrichResult({
+        receptionType: parsed.receptionType,
+        suggestion: parsed.suggestion,
+        issues: parsed.issues,
+        rawOutput: parsed.thinkingProcess || undefined,
+        totalDuration: 0,
+      });
+    }
+  }
 
   // If output is already an AuditResult-shaped object
   if (typeof raw === 'object' && raw !== null) {
@@ -196,18 +267,31 @@ export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
   // Try JSON string
   const text = String(raw);
   try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === 'object') {
+    const jsonParsed = JSON.parse(text);
+    if (jsonParsed && typeof jsonParsed === 'object') {
+      // Check nested 'res' key
+      if (typeof jsonParsed.res === 'string') {
+        const resParsed = parseResString(jsonParsed.res);
+        if (resParsed) {
+          return enrichResult({
+            receptionType: resParsed.receptionType,
+            suggestion: resParsed.suggestion,
+            issues: resParsed.issues,
+            rawOutput: resParsed.thinkingProcess || undefined,
+            totalDuration: 0,
+          });
+        }
+      }
       return enrichResult({
-        receptionType: String(parsed.receptionType || parsed.reception_type || '公务接待'),
-        suggestion: normalizeSuggestion(parsed.suggestion || parsed.result),
-        issues: normalizeIssues(parsed.issues || parsed.problems || []),
-        subDocuments: normalizeSubDocuments(parsed.subDocuments || parsed.sub_documents || parsed.documents),
-        amount: typeof parsed.amount === 'number' ? parsed.amount : undefined,
-        pageCount: typeof parsed.pageCount === 'number' ? parsed.pageCount : undefined,
-        aiSummary: typeof parsed.aiSummary === 'string' ? parsed.aiSummary :
-                   typeof parsed.summary === 'string' ? parsed.summary :
-                   typeof parsed.ai_summary === 'string' ? parsed.ai_summary : undefined,
+        receptionType: String(jsonParsed.receptionType || jsonParsed.reception_type || '公务接待'),
+        suggestion: normalizeSuggestion(jsonParsed.suggestion || jsonParsed.result),
+        issues: normalizeIssues(jsonParsed.issues || jsonParsed.problems || []),
+        subDocuments: normalizeSubDocuments(jsonParsed.subDocuments || jsonParsed.sub_documents || jsonParsed.documents),
+        amount: typeof jsonParsed.amount === 'number' ? jsonParsed.amount : undefined,
+        pageCount: typeof jsonParsed.pageCount === 'number' ? jsonParsed.pageCount : undefined,
+        aiSummary: typeof jsonParsed.aiSummary === 'string' ? jsonParsed.aiSummary :
+                   typeof jsonParsed.summary === 'string' ? jsonParsed.summary :
+                   typeof jsonParsed.ai_summary === 'string' ? jsonParsed.ai_summary : undefined,
         totalDuration: 0,
       });
     }
@@ -220,6 +304,7 @@ export function parseDifyOutput(outputs: Record<string, unknown>): AuditResult {
     receptionType: text.includes('商务接待') ? '商务接待' : '公务接待',
     suggestion: extractSuggestion(text),
     issues: extractIssuesFromText(text),
+    rawOutput: text.length > 10 ? text : undefined,
     totalDuration: 0,
   });
 }
